@@ -1,0 +1,6 @@
+@RoboReglament.Server_HostAddress = http://localhost:5181
+
+GET {{RoboReglament.Server_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
