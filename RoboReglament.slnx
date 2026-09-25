@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="roboreglament.client/roboreglament.client.esproj">
+    <Build />
+    <Deploy />
+  </Project>
+  <Project Path="RoboReglament.Server/RoboReglament.Server.csproj" />
+</Solution>
