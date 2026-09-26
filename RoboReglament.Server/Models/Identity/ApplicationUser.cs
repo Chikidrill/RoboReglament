@@ -8,5 +8,7 @@ namespace RoboReglament.Server.Models.Identity
         public string LastName { get; set; } = string.Empty;
 
         public string? MiddleName { get; set; }
+        public ICollection<TournamentOrganizer> OrganizedTournaments { get; set; }
+            = new List<TournamentOrganizer>();
     }
 }

@@ -23,5 +23,8 @@ namespace RoboReglament.Server.Models
 
         public ICollection<ProtocolTemplate> ProtocolTemplates { get; set; }
             = new List<ProtocolTemplate>();
+
+        public ICollection<TournamentOrganizer> Organizers { get; set; }
+            = new List<TournamentOrganizer>();
     }
 }
