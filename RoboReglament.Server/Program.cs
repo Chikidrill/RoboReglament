@@ -27,11 +27,24 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddSignInManager()
 .AddDefaultTokenProviders();
+builder.Services
+    .AddAuthentication(IdentityConstants.ApplicationScheme)
+    .AddIdentityCookies();
 
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     await DbInitializer.InitializeRolesAsync(scope.ServiceProvider);
+}
+
+using (var scope = app.Services.CreateScope())
+{
+    await DbInitializer.InitializeRolesAsync(
+        scope.ServiceProvider);
+
+    await DbInitializer.InitializeAdminAsync(
+        scope.ServiceProvider,
+        builder.Configuration);
 }
 
 app.UseDefaultFiles();
@@ -45,6 +58,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
