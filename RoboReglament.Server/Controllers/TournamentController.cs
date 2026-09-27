@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RoboReglament.Server.Data;
 using RoboReglament.Server.DTOs.Tournaments;
+using RoboReglament.Server.Migrations;
 using RoboReglament.Server.Models;
 using RoboReglament.Server.Models.Identity;
 
@@ -230,6 +231,229 @@ public class TournamentsController : ControllerBase
         return NoContent();
     }
 
+
+    [Authorize(Roles = UserRoles.Organizer)]
+    [HttpPut("{id:int}/status")]
+    public async Task<IActionResult> UpdateStatus(
+    int id,
+    UpdateTournamentStatusRequest request)
+    {
+        var userId = _userManager.GetUserId(User);
+
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var tournament = await _context.Tournaments
+            .FirstOrDefaultAsync(x => x.Id == id);
+
+        if (tournament is null)
+        {
+            return NotFound(new
+            {
+                message = "Турнир не найден."
+            });
+        }
+
+        var canManage = await _context.TournamentOrganizers
+            .AnyAsync(x =>
+                x.TournamentId == id &&
+                x.UserId == userId);
+
+        if (!canManage)
+        {
+            return Forbid();
+        }
+
+        if (!CanChangeStatus(tournament.Status, request.Status))
+        {
+            return BadRequest(new
+            {
+                message =
+                    $"Нельзя изменить статус с {tournament.Status} на {request.Status}."
+            });
+        }
+
+        tournament.Status = request.Status;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(ToResponse(tournament));
+    }
+
+    [Authorize(Roles = UserRoles.Organizer)]
+    [HttpGet("{id:int}/organizers")]
+    public async Task<ActionResult> GetOrganizers(int id)
+    {
+        var userId = _userManager.GetUserId(User);
+
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var tournamentExists = await _context.Tournaments.AnyAsync(x => x.Id == id);
+
+        if (!tournamentExists)
+        {
+            return NotFound(new {message = "Турнир не найден"});
+
+        }
+
+        var canManage = await _context.TournamentOrganizers.AnyAsync(x => x.TournamentId == id && x.UserId == userId);
+
+        if (!canManage)
+        {
+            return Forbid();
+        }
+
+        var organizers = await _context.TournamentOrganizers.AsNoTracking().Where(x => x.TournamentId == id).Select(x => new TournamentOrganizerResponse
+        {
+            Id = x.User.Id,
+            Email = x.User.Email ?? string.Empty,
+            FirstName = x.User.FirstName,
+            LastName = x.User.LastName,
+            MiddleName = x.User.MiddleName,
+        }).ToListAsync();
+
+        return Ok(organizers);
+    }
+
+    [Authorize(Roles = UserRoles.Organizer)]
+    [HttpPost("{id:int}/organizers/{newOrganizerId}")]
+    public async Task<IActionResult> AddOrganizer(
+    int id,
+    string newOrganizerId)
+    {
+        var currentUserId = _userManager.GetUserId(User);
+
+        if (currentUserId is null)
+        {
+            return Unauthorized();
+        }
+
+        var tournamentExists = await _context.Tournaments
+            .AnyAsync(x => x.Id == id);
+
+        if (!tournamentExists)
+        {
+            return NotFound(new
+            {
+                message = "Турнир не найден."
+            });
+        }
+
+        var canManage = await _context.TournamentOrganizers
+            .AnyAsync(x =>
+                x.TournamentId == id &&
+                x.UserId == currentUserId);
+
+        if (!canManage)
+        {
+            return Forbid();
+        }
+
+        var newOrganizer =
+            await _userManager.FindByIdAsync(newOrganizerId);
+
+        if (newOrganizer is null)
+        {
+            return NotFound(new
+            {
+                message = "Пользователь не найден."
+            });
+        }
+
+        if (!await _userManager.IsInRoleAsync(
+                newOrganizer,
+                UserRoles.Organizer))
+        {
+            return BadRequest(new
+            {
+                message = "Пользователь не имеет роли Organizer."
+            });
+        }
+
+        var alreadyOrganizer = await _context.TournamentOrganizers
+            .AnyAsync(x =>
+                x.TournamentId == id &&
+                x.UserId == newOrganizerId);
+
+        if (alreadyOrganizer)
+        {
+            return Conflict(new
+            {
+                message = "Пользователь уже является организатором этого турнира."
+            });
+        }
+
+        _context.TournamentOrganizers.Add(
+            new TournamentOrganizer
+            {
+                TournamentId = id,
+                UserId = newOrganizerId
+            });
+
+        await _context.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    [Authorize(Roles = UserRoles.Organizer)]
+    [HttpDelete("{id:int}/organizers/{organizerId}")]
+    public async Task<IActionResult> RemoveOrganizer(
+    int id,
+    string organizerId)
+    {
+        var currentUserId = _userManager.GetUserId(User);
+
+        if (currentUserId is null)
+        {
+            return Unauthorized();
+        }
+
+        var canManage = await _context.TournamentOrganizers
+            .AnyAsync(x =>
+                x.TournamentId == id &&
+                x.UserId == currentUserId);
+
+        if (!canManage)
+        {
+            return Forbid();
+        }
+
+        var organizer = await _context.TournamentOrganizers
+            .FirstOrDefaultAsync(x =>
+                x.TournamentId == id &&
+                x.UserId == organizerId);
+
+        if (organizer is null)
+        {
+            return NotFound(new
+            {
+                message = "Этот пользователь не является организатором турнира."
+            });
+        }
+
+        var organizersCount = await _context.TournamentOrganizers
+            .CountAsync(x => x.TournamentId == id);
+
+        if (organizersCount <= 1)
+        {
+            return BadRequest(new
+            {
+                message = "Нельзя удалить последнего организатора турнира."
+            });
+        }
+
+        _context.TournamentOrganizers.Remove(organizer);
+
+        await _context.SaveChangesAsync();
+
+        return NoContent();
+    }
+
     private static TournamentResponse ToResponse(Tournament tournament)
     {
         return new TournamentResponse
@@ -245,4 +469,24 @@ public class TournamentsController : ControllerBase
             CreatedAt = tournament.CreatedAt
         };
     }
+
+    private static bool CanChangeStatus(
+    TournamentStatus currentStatus,
+    TournamentStatus newStatus)
+    {
+        return (currentStatus, newStatus) switch
+        {
+            (TournamentStatus.Draft,
+             TournamentStatus.Registration) => true,
+
+            (TournamentStatus.Registration,
+             TournamentStatus.InProgress) => true,
+
+            (TournamentStatus.InProgress,
+             TournamentStatus.Completed) => true,
+
+            _ => false
+        };
+    }
+
 }
