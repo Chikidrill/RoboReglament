@@ -29,6 +29,9 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<JudgeProtocol> JudgeProtocols => Set<JudgeProtocol>();
     public DbSet<JudgeScore> JudgeScores => Set<JudgeScore>();
 
+    public DbSet<TournamentOrganizer> TournamentOrganizers
+        => Set<TournamentOrganizer>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -117,5 +120,21 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<JudgeScore>()
             .Property(x => x.Value)
             .HasPrecision(18, 2);
+
+        builder.Entity<TournamentOrganizer>()
+            .HasIndex(x => new { x.TournamentId, x.UserId })
+            .IsUnique();
+
+        builder.Entity<TournamentOrganizer>()
+            .HasOne(x => x.Tournament)
+            .WithMany(x => x.Organizers)
+            .HasForeignKey(x => x.TournamentId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<TournamentOrganizer>()
+            .HasOne(x => x.User)
+            .WithMany(x => x.OrganizedTournaments)
+            .HasForeignKey(x => x.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

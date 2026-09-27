@@ -1,3 +1,2 @@
 @host = https://localhost:7014
-
-GET {{host}}/api/admin/users
+DELETE {{host}}/api/tournaments/2/organizers/64a7836f-e042-42cc-8062-53bdbf4022f5
