@@ -32,6 +32,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<TournamentOrganizer> TournamentOrganizers
         => Set<TournamentOrganizer>();
 
+    public DbSet<TeamCoach> TeamCoaches => Set<TeamCoach>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -41,6 +43,13 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<TournamentApplication>()
             .HasIndex(x => new { x.TournamentId, x.TeamId })
             .IsUnique();
+
+        builder.Entity<TournamentApplication>()
+            .HasOne(x => x.Team)
+            .WithMany(x => x.Applications)
+            .HasForeignKey(x => x.TeamId)
+            .OnDelete(DeleteBehavior.Restrict);
+
 
         // Одна заявка — одна аккредитация.
         builder.Entity<Accreditation>()
@@ -70,6 +79,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<MatchTeam>()
             .HasIndex(x => new { x.MatchGroupId, x.TeamId })
             .IsUnique();
+
+        builder.Entity<MatchTeam>()
+            .HasOne(x => x.Team)
+            .WithMany(x => x.MatchTeams)
+            .HasForeignKey(x => x.TeamId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // Порядок критериев внутри одного протокола уникален.
         builder.Entity<ProtocolCriterion>()
@@ -134,6 +149,22 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<TournamentOrganizer>()
             .HasOne(x => x.User)
             .WithMany(x => x.OrganizedTournaments)
+            .HasForeignKey(x => x.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<TeamCoach>()
+            .HasIndex(x => new { x.TeamId, x.UserId })
+            .IsUnique();
+
+        builder.Entity<TeamCoach>()
+            .HasOne(x => x.Team)
+            .WithMany(x => x.Coaches)
+            .HasForeignKey(x => x.TeamId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<TeamCoach>()
+            .HasOne(x => x.User)
+            .WithMany(x => x.CoachedTeams)
             .HasForeignKey(x => x.UserId)
             .OnDelete(DeleteBehavior.Restrict);
     }

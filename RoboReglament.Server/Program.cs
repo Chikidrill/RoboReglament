@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using RoboReglament.Server.Data;
 using RoboReglament.Server.Models.Identity;
 using System.Text.Json.Serialization;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -61,6 +62,7 @@ app.MapStaticAssets();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    app.MapScalarApiReference();
 }
 
 app.UseHttpsRedirection();
