@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using RoboReglament.Server.Models;
 namespace RoboReglament.Server.Models.Identity
 {
     public class ApplicationUser: IdentityUser
