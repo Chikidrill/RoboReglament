@@ -198,23 +198,29 @@ namespace RoboReglament.Server.Controllers
                 });
             }
 
-            var hasApplications = await _context.TournamentApplications
-                .AnyAsync(x => x.TeamId == teamId);
 
-            if (hasApplications)
+            // Находим исторические записи, связанные с участником.
+            var applicationParticipants = await _context
+                .TournamentApplicationParticipants
+                .Where(x => x.ParticipantId == participantId)
+                .ToListAsync();
+
+            // Убираем связь с текущим участником,
+            // сохраняя исторические данные.
+            foreach (var item in applicationParticipants)
             {
-                return Conflict(new
-                {
-                    message = "Нельзя удалить участника команды, " +
-                              "для которой уже существуют заявки на турниры."
-                });
+                item.ParticipantId = null;
+                item.Participant = null;
             }
 
+            // Удаляем участника из текущего состава команды.
             _context.Participants.Remove(participant);
 
+            // Сохраняем изменения одной транзакцией EF Core.
             await _context.SaveChangesAsync();
 
             return NoContent();
+
         }
 
         // Проверка прав доступа к команде.

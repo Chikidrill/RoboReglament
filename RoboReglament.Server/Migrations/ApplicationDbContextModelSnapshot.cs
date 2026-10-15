@@ -642,6 +642,48 @@ namespace RoboReglament.Server.Migrations
                     b.ToTable("TournamentApplications");
                 });
 
+            modelBuilder.Entity("RoboReglament.Server.Models.TournamentApplicationParticipant", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateOnly?>("BirthDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("FirstName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("MiddleName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int?>("ParticipantId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TournamentApplicationId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ParticipantId");
+
+                    b.HasIndex("TournamentApplicationId", "ParticipantId")
+                        .IsUnique()
+                        .HasFilter("[ParticipantId] IS NOT NULL");
+
+                    b.ToTable("TournamentApplicationParticipants");
+                });
+
             modelBuilder.Entity("RoboReglament.Server.Models.TournamentOrganizer", b =>
                 {
                     b.Property<int>("Id")
@@ -888,6 +930,23 @@ namespace RoboReglament.Server.Migrations
                     b.Navigation("Tournament");
                 });
 
+            modelBuilder.Entity("RoboReglament.Server.Models.TournamentApplicationParticipant", b =>
+                {
+                    b.HasOne("RoboReglament.Server.Models.Participant", "Participant")
+                        .WithMany()
+                        .HasForeignKey("ParticipantId");
+
+                    b.HasOne("RoboReglament.Server.Models.TournamentApplication", "TournamentApplication")
+                        .WithMany("DeclaredParticipants")
+                        .HasForeignKey("TournamentApplicationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Participant");
+
+                    b.Navigation("TournamentApplication");
+                });
+
             modelBuilder.Entity("RoboReglament.Server.Models.TournamentOrganizer", b =>
                 {
                     b.HasOne("RoboReglament.Server.Models.Tournament", "Tournament")
@@ -968,6 +1027,8 @@ namespace RoboReglament.Server.Migrations
             modelBuilder.Entity("RoboReglament.Server.Models.TournamentApplication", b =>
                 {
                     b.Navigation("Accreditation");
+
+                    b.Navigation("DeclaredParticipants");
                 });
 #pragma warning restore 612, 618
         }

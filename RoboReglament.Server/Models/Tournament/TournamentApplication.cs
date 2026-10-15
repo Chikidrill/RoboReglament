@@ -13,6 +13,9 @@ public class TournamentApplication
 
     public Team Team { get; set; } = null!;
 
+    public ICollection<TournamentApplicationParticipant> DeclaredParticipants { get; set; }
+    = new List<TournamentApplicationParticipant>();
+
     public ApplicationStatus Status { get; set; }
         = ApplicationStatus.Pending;
 

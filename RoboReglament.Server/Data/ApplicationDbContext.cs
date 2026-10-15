@@ -33,7 +33,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         => Set<TournamentOrganizer>();
 
     public DbSet<TeamCoach> TeamCoaches => Set<TeamCoach>();
-
+    public DbSet<TournamentApplicationParticipant> TournamentApplicationParticipants
+    => Set<TournamentApplicationParticipant>();
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -167,5 +168,21 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             .WithMany(x => x.CoachedTeams)
             .HasForeignKey(x => x.UserId)
             .OnDelete(DeleteBehavior.Restrict);
+        builder.Entity<TournamentApplicationParticipant>()
+            .HasIndex(x => new { x.TournamentApplicationId, x.ParticipantId })
+            .IsUnique()
+            .HasFilter("[ParticipantId] IS NOT NULL");
+
+        builder.Entity<TournamentApplicationParticipant>()
+            .Property(x => x.FirstName)
+            .HasMaxLength(100);
+
+        builder.Entity<TournamentApplicationParticipant>()
+            .Property(x => x.LastName)
+            .HasMaxLength(100);
+
+        builder.Entity<TournamentApplicationParticipant>()
+            .Property(x => x.MiddleName)
+            .HasMaxLength(100);
     }
 }
