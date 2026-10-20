@@ -5,8 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using RoboReglament.Server.Data;
 using RoboReglament.Server.DTOs.Tournaments;
 using RoboReglament.Server.Migrations;
-using RoboReglament.Server.Models;
 using RoboReglament.Server.Models.Identity;
+using RoboReglament.Server.Models;
 
 namespace RoboReglament.Server.Controllers;
 

@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using RoboReglament.Server.Models;
 namespace RoboReglament.Server.Models.Identity
 {
     public class ApplicationUser: IdentityUser
@@ -10,5 +11,8 @@ namespace RoboReglament.Server.Models.Identity
         public string? MiddleName { get; set; }
         public ICollection<TournamentOrganizer> OrganizedTournaments { get; set; }
             = new List<TournamentOrganizer>();
+
+        public ICollection<TeamCoach> CoachedTeams { get; set; }
+            = new List<TeamCoach>();
     }
 }

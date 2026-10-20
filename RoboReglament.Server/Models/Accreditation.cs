@@ -1,4 +1,6 @@
-﻿namespace RoboReglament.Server.Models;
+﻿using RoboReglament.Server.Models;
+
+namespace RoboReglament.Server.Models;
 
 public class Accreditation
 {

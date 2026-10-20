@@ -1,4 +1,6 @@
-﻿namespace RoboReglament.Server.Models
+﻿using RoboReglament.Server.Models;
+
+namespace RoboReglament.Server.Models
 {
     public class Team
     {
@@ -10,6 +12,8 @@
 
         public string? City { get; set; }
 
+
+
         public ICollection<Participant> Participants { get; set; }
             = new List<Participant>();
 
@@ -18,5 +22,8 @@
 
         public ICollection<MatchTeam> MatchTeams { get; set; }
             = new List<MatchTeam>();
+
+        public ICollection<TeamCoach> Coaches { get; set; }
+            = new List<TeamCoach>();
     }
 }

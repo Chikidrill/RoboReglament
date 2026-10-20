@@ -1,6 +1,6 @@
 ﻿using Microsoft.VisualBasic;
+using RoboReglament.Server.Models;
 using System.Text.RegularExpressions;
-
 namespace RoboReglament.Server.Models
 {
     public class Tournament

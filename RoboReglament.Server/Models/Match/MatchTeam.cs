@@ -1,5 +1,5 @@
-﻿namespace RoboReglament.Server.Models;
-
+﻿
+namespace RoboReglament.Server.Models;
 public class MatchTeam
 {
     public int Id { get; set; }

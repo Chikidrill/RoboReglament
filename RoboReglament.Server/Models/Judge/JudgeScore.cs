@@ -1,4 +1,5 @@
-﻿namespace RoboReglament.Server.Models;
+﻿
+namespace RoboReglament.Server.Models;
 
 public class JudgeScore
 {

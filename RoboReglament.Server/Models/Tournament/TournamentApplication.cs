@@ -1,4 +1,5 @@
-﻿namespace RoboReglament.Server.Models;
+﻿using RoboReglament.Server.Models;
+namespace RoboReglament.Server.Models;
 
 public class TournamentApplication
 {
@@ -11,6 +12,9 @@ public class TournamentApplication
     public int TeamId { get; set; }
 
     public Team Team { get; set; } = null!;
+
+    public ICollection<TournamentApplicationParticipant> DeclaredParticipants { get; set; }
+    = new List<TournamentApplicationParticipant>();
 
     public ApplicationStatus Status { get; set; }
         = ApplicationStatus.Pending;

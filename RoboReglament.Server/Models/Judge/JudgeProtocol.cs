@@ -1,4 +1,5 @@
 ﻿using RoboReglament.Server.Models.Identity;
+using RoboReglament.Server.Models;
 namespace RoboReglament.Server.Models;
 
 public class JudgeProtocol
