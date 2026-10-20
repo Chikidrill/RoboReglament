@@ -1,0 +1,77 @@
+@import './variables.css';
+@import './global.css';
+
+@import './components/buttons.css';
+@import './components/header.css';
+@import './components/tournament-card.css';
+
+@import './pages/home.css';
+@import './pages/tournaments.css';
+@import './pages/tournament-details.css';
+@import './pages/about.css';
+
+.placeholder-page {
+  padding-top: 56px;
+}
+
+.placeholder-page h1 {
+  font-size: 34px;
+}
+
+.placeholder-page p {
+  margin-bottom: 28px;
+  color: var(--color-muted);
+}
+
+/* Адаптивность */
+
+@media (max-width: 1050px) {
+  .site-header__inner {
+    flex-wrap: wrap;
+    padding-top: 12px;
+  }
+
+  .site-header__nav {
+    order: 3;
+    width: 100%;
+    height: 50px;
+    justify-content: center;
+  }
+
+  .site-header__nav-link {
+    height: 50px;
+  }
+
+  .home-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .navigation-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .site-header__nav {
+    justify-content: flex-start;
+    gap: 18px;
+    overflow-x: auto;
+  }
+
+  .site-header__actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .site-header__inner {
+    padding-bottom: 10px;
+  }
+
+  .home-hero {
+    padding: 22px;
+  }
+
+  .navigation-grid {
+    grid-template-columns: 1fr;
+  }
+}
