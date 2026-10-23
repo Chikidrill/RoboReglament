@@ -1,0 +1,131 @@
+.tournament-card {
+  display: grid;
+  grid-template-columns: 146px minmax(0, 1fr);
+  min-height: 242px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.tournament-card:hover {
+  border-color: #a6bcc9;
+  box-shadow: 0 6px 24px rgb(30 37 53 / 5%);
+}
+
+.tournament-card__date {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 8px;
+  padding: 22px;
+  background: #edf1fa;
+  color: var(--color-primary);
+}
+
+.tournament-card__day {
+  font-size: 29px;
+  font-weight: 700;
+  letter-spacing: -1px;
+}
+
+.tournament-card__month {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.tournament-card__content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 22px;
+}
+
+.tournament-card h2 {
+  margin: 0;
+  font-size: 19px;
+  line-height: 1.4;
+}
+
+.tournament-card__description {
+  margin: 10px 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.tournament-card__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: auto;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.tournament-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.status-badge--blue {
+  background: #edf1fa;
+  color: #3e4b8e;
+}
+
+.status-badge--green {
+  background: #ebf6ef;
+  color: #2e7857;
+}
+
+.status-badge--yellow {
+  background: #fff4db;
+  color: #996720;
+}
+
+.status-badge--gray {
+  background: #f2f4f6;
+  color: #6e7788;
+}
+
+.tournament-card__link {
+  flex-shrink: 0;
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+  .tournament-card__link:hover {
+    text-decoration: underline;
+  }
+
+@media (max-width: 650px) {
+  .tournament-card {
+    grid-template-columns: 1fr;
+  }
+
+  .tournament-card__date {
+    padding: 15px 22px;
+  }
+
+  .tournament-card__day {
+    font-size: 23px;
+  }
+}
+

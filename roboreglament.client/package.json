@@ -14,7 +14,10 @@
     "lint:eslint": "eslint . --fix --cache"
   },
   "dependencies": {
-    "vue": "^3.5.42"
+    "@fontsource/inter": "^5.3.0",
+    "pinia": "^4.1.0",
+    "vue": "^3.5.42",
+    "vue-router": "^4.6.4"
   },
   "devDependencies": {
     "@tsconfig/node24": "^24.0.5",
