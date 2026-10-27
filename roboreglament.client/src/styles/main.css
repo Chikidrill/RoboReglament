@@ -9,6 +9,10 @@
 @import './pages/tournaments.css';
 @import './pages/tournament-details.css';
 @import './pages/about.css';
+@import './pages/login.css';
+@import './pages/register.css';
+@import './pages/account.css';
+
 
 .placeholder-page {
   padding-top: 56px;

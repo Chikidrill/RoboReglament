@@ -5,9 +5,9 @@ using RoboReglament.Server.Models.Identity;
 using System.Text.Json.Serialization;
 using Scalar.AspNetCore;
 
-var builder = WebApplication.CreateBuilder(args);
+DotNetEnv.Env.NoClobber().TraversePath().Load();
 
-// Add services to the container.
+var builder = WebApplication.CreateBuilder(args);
 
 builder.Services
     .AddControllers()
