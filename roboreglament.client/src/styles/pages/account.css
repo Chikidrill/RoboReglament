@@ -1,0 +1,94 @@
+
+.account-page {
+  padding-top: 16px;
+}
+
+  .account-page h1 {
+    margin: 0;
+    font-size: 34px;
+    font-weight: 700;
+  }
+
+.account-page__description {
+  margin: 12px 0 36px;
+  color: var(--color-muted);
+  font-size: 14px;
+}
+
+.account-card {
+  width: 100%;
+  max-width: 700px;
+  padding: 32px;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+}
+
+.account-card__heading {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding-bottom: 28px;
+}
+
+.account-card__avatar {
+  display: flex;
+  flex: 0 0 60px;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #edf1fa;
+  color: var(--color-primary);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.account-card__heading h2 {
+  margin: 0 0 8px;
+  font-size: 21px;
+}
+
+.account-card__heading span {
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.account-card__field {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 19px 0;
+  border-top: 1px solid var(--color-border);
+  font-size: 14px;
+}
+
+  .account-card__field > span {
+    color: var(--color-muted);
+  }
+
+  .account-card__field strong {
+    font-weight: 600;
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+
+@media (max-width: 600px) {
+  .account-page h1 {
+    font-size: 28px;
+  }
+
+  .account-card {
+    padding: 22px;
+  }
+
+  .account-card__field {
+    flex-direction: column;
+    gap: 7px;
+  }
+
+    .account-card__field strong {
+      text-align: left;
+    }
+}

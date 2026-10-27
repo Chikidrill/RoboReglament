@@ -1,0 +1,182 @@
+
+.login-page {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0 64px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 652px;
+  padding: 40px 56px 48px;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+}
+
+  .login-card h1 {
+    margin: 0;
+    color: var(--color-text);
+    font-size: 34px;
+    font-weight: 700;
+    line-height: 1.25;
+  }
+
+.login-card__description {
+  margin: 16px 0 28px;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.login-card__tabs {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  margin-bottom: 26px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.login-card__tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 46px;
+  color: var(--color-muted);
+  font-size: 13px;
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+}
+
+.login-card__tab--active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  font-weight: 600;
+}
+
+.login-card__tab:not(.login-card__tab--active):hover {
+  color: var(--color-primary);
+}
+
+/* Поля формы */
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
+.login-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+  .login-form__field label {
+    color: var(--color-text);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .login-form__field input {
+    width: 100%;
+    height: 52px;
+    padding: 0 16px;
+    background: #ffffff;
+    color: var(--color-text);
+    border: 1px solid #d9e0e9;
+    border-radius: 10px;
+    outline: none;
+    font: inherit;
+    font-size: 13px;
+  }
+
+    .login-form__field input:focus {
+      border-color: var(--color-primary);
+    }
+
+    .login-form__field input:disabled {
+      background: #f8fafc;
+      cursor: not-allowed;
+    }
+
+.login-form__password {
+  position: relative;
+}
+
+  .login-form__password input {
+    padding-right: 100px;
+  }
+
+.login-form__toggle-password {
+  position: absolute;
+  top: 50%;
+  right: 15px;
+  transform: translateY(-50%);
+  padding: 6px;
+  background: transparent;
+  border: none;
+  color: var(--color-primary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.login-form__error {
+  margin: 0;
+  padding: 12px 14px;
+  background: #fdf0f1;
+  border-radius: 8px;
+  color: #b42336;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.login-form__submit {
+  width: 100%;
+  min-height: 50px;
+  margin-top: 12px;
+  cursor: pointer;
+}
+
+  .login-form__submit:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+  }
+
+/* Нижняя часть */
+
+.login-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 40px;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+  .login-card__footer a {
+    color: var(--color-primary);
+    font-weight: 600;
+  }
+
+    .login-card__footer a:hover {
+      text-decoration: underline;
+    }
+
+/* Адаптивность */
+
+@media (max-width: 600px) {
+  .login-page {
+    padding-top: 8px;
+  }
+
+  .login-card {
+    padding: 28px 20px 36px;
+  }
+
+    .login-card h1 {
+      font-size: 28px;
+    }
+}

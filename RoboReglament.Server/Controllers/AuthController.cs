@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using RoboReglament.Server.DTOs;
 using RoboReglament.Server.DTOs.Auth;
 using RoboReglament.Server.Models.Identity;
 
@@ -156,4 +157,36 @@ public class AuthController : ControllerBase
             Roles = roles
         });
     }
+
+    [Authorize]
+    [HttpPost("change-password")]
+    public async Task<IActionResult> ChangePassword(
+        ChangePasswordRequest request)
+    {
+        var user = await _userManager.GetUserAsync(User);
+
+        if (user is null)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _userManager.ChangePasswordAsync(
+            user,
+            request.CurrentPassword,
+            request.NewPassword);
+
+        if (!result.Succeeded)
+        {
+            return BadRequest(new
+            {
+                message = "Не удалось изменить пароль.",
+                errors = result.Errors.Select(x => x.Description)
+            });
+        }
+
+        await _signInManager.RefreshSignInAsync(user);
+
+        return NoContent();
+    }
+
 }

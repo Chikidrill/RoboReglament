@@ -1,4 +1,8 @@
 <Solution>
+  <Folder Name="/Элементы решения/">
+    <File Path=".env" />
+    <File Path=".env.example" />
+  </Folder>
   <Project Path="roboreglament.client/roboreglament.client.esproj">
     <Build />
     <Deploy />
