@@ -4,18 +4,37 @@ using RoboReglament.Server.Data;
 using RoboReglament.Server.Models.Identity;
 using System.Text.Json.Serialization;
 using Scalar.AspNetCore;
-
+using Microsoft.AspNetCore.Mvc;
 DotNetEnv.Env.NoClobber().TraversePath().Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
+
+
 builder.Services
-    .AddControllers()
+    .AddControllersWithViews(options =>
+    {
+        options.Filters.Add(
+            new AutoValidateAntiforgeryTokenAttribute());
+    })
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(
             new JsonStringEnumConverter());
     });
+
+
+builder.Services.AddAntiforgery(options =>
+{
+    options.HeaderName = "X-CSRF-TOKEN";
+
+    options.Cookie.Name = "RoboReglament.Antiforgery";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Strict;
+    options.Cookie.SecurePolicy =
+        CookieSecurePolicy.Always;
+});
+
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
