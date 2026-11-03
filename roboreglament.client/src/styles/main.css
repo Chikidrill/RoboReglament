@@ -4,7 +4,7 @@
 @import './components/buttons.css';
 @import './components/header.css';
 @import './components/tournament-card.css';
-
+@import './components/user-dropdown.css';
 @import './pages/home.css';
 @import './pages/tournaments.css';
 @import './pages/tournament-details.css';
@@ -13,7 +13,8 @@
 @import './pages/register.css';
 @import './pages/account.css';
 @import './pages/admin.css';
-
+@import './layouts.css';
+@import './components/dashboard-sidebar.css';
 .placeholder-page {
   padding-top: 56px;
 }
