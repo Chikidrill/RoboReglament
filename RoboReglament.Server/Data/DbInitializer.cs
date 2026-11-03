@@ -12,6 +12,7 @@ namespace RoboReglament.Server.Data
 
             string[] roles =
             [
+                UserRoles.PlatformOwner,
                 UserRoles.Administrator,
                 UserRoles.Organizer,
             UserRoles.Judge,
@@ -75,5 +76,58 @@ namespace RoboReglament.Server.Data
                 admin,
                 UserRoles.Administrator);
         }
+
+        public static async Task InitializeOwnerAsync(
+            IServiceProvider serviceProvider,
+            IConfiguration configuration)
+        {
+            var userManager =
+                serviceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+
+            var ownerEmail = configuration["Owner:Email"];
+
+            if (string.IsNullOrWhiteSpace(ownerEmail))
+            {
+                return;
+            }
+
+            // Если владелец уже существует,
+            // повторное назначение не требуется.
+            var existingOwners = await userManager.GetUsersInRoleAsync(
+                UserRoles.PlatformOwner);
+
+            if (existingOwners.Count > 0)
+            {
+                return;
+            }
+
+            var user = await userManager.FindByEmailAsync(ownerEmail);
+
+            if (user is null)
+            {
+                throw new InvalidOperationException(
+                    "Учётная запись владельца платформы не найдена.");
+            }
+
+            // Первым владельцем может стать только
+            // существующий администратор.
+            if (!await userManager.IsInRoleAsync(
+                user, UserRoles.Administrator))
+            {
+                throw new InvalidOperationException(
+                    "Владелец платформы должен иметь роль Administrator.");
+            }
+
+            var result = await userManager.AddToRoleAsync(
+                user, UserRoles.PlatformOwner);
+
+            if (!result.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    string.Join("; ",
+                        result.Errors.Select(x => x.Description)));
+            }
+        }
+
     }
 }

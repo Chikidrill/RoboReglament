@@ -72,6 +72,10 @@ using (var scope = app.Services.CreateScope())
     await DbInitializer.InitializeAdminAsync(
         scope.ServiceProvider,
         builder.Configuration);
+
+    await DbInitializer.InitializeOwnerAsync(
+        scope.ServiceProvider,
+        builder.Configuration);
 }
 
 app.UseDefaultFiles();

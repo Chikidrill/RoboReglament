@@ -5,6 +5,7 @@ namespace RoboReglament.Server.Models.Identity
 {
     public static class UserRoles
     {
+        public const string PlatformOwner = "Platform Owner";
         public const string Administrator = "Administrator";
         public const string Organizer = "Organizer";
         public const string Judge = "Judge";
