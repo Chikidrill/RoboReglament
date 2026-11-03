@@ -64,6 +64,13 @@
                     exact-active-class="is-active">
           Личный кабинет
         </RouterLink>
+
+        <RouterLink v-if="authStore.user?.roles.includes('Administrator')"
+                    to="/admin"
+                    class="site-header__nav-link"
+                    exact-active-class="is-active">
+          Администрирование
+        </RouterLink>
       </nav>
 
       <div class="site-header__actions">
