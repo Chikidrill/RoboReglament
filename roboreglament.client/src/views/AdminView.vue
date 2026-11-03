@@ -6,12 +6,13 @@
     onUnmounted,
     ref,
   } from 'vue'
-
   import {
     getAdminUsers,
     updateAdminUserRoles,
+    assignAdministrator,
+    revokeAdministrator,
   } from '@/api/admin'
-
+  import { useAuthStore } from '@/stores/auth'
   import type { AdminUser } from '@/types/admin'
 
   const users = ref<AdminUser[]>([])
@@ -27,6 +28,19 @@
 
   const controller = new AbortController()
 
+  const authStore = useAuthStore()
+
+  const isUpdatingAdministrator = ref<string | null>(null)
+  const administratorError = ref('')
+
+  const isPlatformOwner = computed(() =>
+    authStore.user?.roles.includes('Platform Owner') ?? false,
+  )
+
+  function isOwnerUser(user: AdminUser): boolean {
+    return user.roles.includes('Platform Owner')
+  }
+
   const roleNames: Record<string, string> = {
     'Platform Owner': 'Владелец платформы',
     PlatformOwner: 'Владелец платформы',
@@ -37,8 +51,6 @@
     Participant: 'Участник',
   }
 
-  // Только эти роли можно редактировать
-  // через обычный административный API.
   const editableRoles = [
     { value: 'Participant', label: 'Участник' },
     { value: 'Coach', label: 'Тренер' },
@@ -114,9 +126,6 @@
     }
 
     editingUserId.value = user.id
-
-    // Берём только обычные роли.
-    // Administrator и Platform Owner не редактируем.
     selectedRoles.value = user.roles.filter(
       role => editableRoleValues.has(role),
     )
@@ -162,9 +171,6 @@
         user.id,
         [...selectedRoles.value],
       )
-
-      // Сразу обновляем данные в таблице
-      // без перезагрузки всей страницы.
       users.value = users.value.map(item =>
         item.id === user.id
           ? {
@@ -188,6 +194,64 @@
       isSavingRoles.value = false
     }
   }
+
+
+  async function toggleAdministrator(user: AdminUser) {
+    if (
+      !isPlatformOwner.value ||
+      isOwnerUser(user) ||
+      isUpdatingAdministrator.value !== null ||
+      isSavingRoles.value ||
+      editingUserId.value !== null
+    ) {
+      return
+    }
+
+    const isAdministrator = user.roles.includes('Administrator')
+
+    const actionText = isAdministrator
+      ? 'снять права администратора'
+      : 'назначить администратором'
+
+    const confirmed = window.confirm(
+      `Вы действительно хотите ${actionText} ` +
+      `пользователя ${getFullName(user)}?`,
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    isUpdatingAdministrator.value = user.id
+    administratorError.value = ''
+    successMessage.value = ''
+
+    try {
+      const updatedUser = isAdministrator
+        ? await revokeAdministrator(user.id)
+        : await assignAdministrator(user.id)
+      users.value = users.value.map(item =>
+        item.id === user.id
+          ? {
+            ...item,
+            roles: updatedUser.roles,
+          }
+          : item,
+      )
+
+      successMessage.value = isAdministrator
+        ? `Права администратора у пользователя ${getFullName(user)} отозваны.`
+        : `Пользователь ${getFullName(user)} назначен администратором.`
+    } catch (err) {
+      administratorError.value =
+        err instanceof Error
+          ? err.message
+          : 'Не удалось изменить права администратора.'
+    } finally {
+      isUpdatingAdministrator.value = null
+    }
+  }
+
 
   onMounted(() => {
     void loadUsers()
@@ -237,6 +301,12 @@
        class="admin-page__success"
        role="status">
       {{ successMessage }}
+    </p>
+
+    <p v-if="administratorError"
+       class="admin-role-editor__error"
+       role="alert">
+      {{ administratorError }}
     </p>
 
     <div v-if="isLoading"
@@ -300,13 +370,11 @@
                 <td class="admin-users-table__actions">
                   <button class="admin-page__edit-button"
                           type="button"
-                          :disabled="
-                      isSavingRoles ||
-                      (editingUserId !== null &&
-                        editingUserId !== user.id)
-                    "
-                          @click="
-                      editingUserId === user.id
+                          :disabled="isUpdatingAdministrator !== null ||
+                          isSavingRoles ||
+                          (editingUserId !== null &&
+                            editingUserId !== user.id)"
+                          @click="editingUserId === user.id
                         ? cancelEditing()
                         : startEditing(user)
                     ">
@@ -316,6 +384,34 @@
                         : 'Изменить роли'
                     }}
                   </button>
+                  <template v-if="isPlatformOwner">
+                    <span v-if="isOwnerUser(user)"
+                          class="admin-page__protected">
+                      Владелец платформы
+                    </span>
+
+                    <button v-else
+                            class="admin-page__admin-button"
+                            :class="{
+                        'admin-page__admin-button--danger':
+                          user.roles.includes('Administrator'),
+                      }"
+                            type="button"
+                            :disabled="
+                        isUpdatingAdministrator !== null ||
+                        isSavingRoles ||
+                        editingUserId !== null
+                      "
+                            @click="toggleAdministrator(user)">
+                      {{
+                        isUpdatingAdministrator === user.id
+                          ? 'Сохранение...'
+                          : user.roles.includes('Administrator')
+                            ? 'Снять администратора'
+                            : 'Назначить администратором'
+                      }}
+                    </button>
+                  </template>
                 </td>
               </tr>
 
@@ -345,11 +441,6 @@
                         <span>{{ role.label }}</span>
                       </label>
                     </div>
-
-                    <p class="admin-role-editor__hint">
-                      Роли администратора и владельца
-                      платформы здесь не изменяются.
-                    </p>
 
                     <p v-if="editError"
                        class="admin-role-editor__error"
