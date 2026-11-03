@@ -10,7 +10,7 @@ import PlaceholderView from '@/views/PlaceholderView.vue'
 import AboutView from '@/views/AboutView.vue'
 import LoginView from '@/views/LoginView.vue'
 import RegisterView from '@/views/RegisterView.vue'
-
+import AdminView from '@/views/AdminView.vue'
 import AccountView from '@/views/AccountView.vue'
 import { useAuthStore } from '@/stores/auth'
 
@@ -86,11 +86,7 @@ const router = createRouter({
         {
           path: 'admin',
           name: 'admin',
-          component: PlaceholderView,
-          props: {
-            title: 'Кабинет администратора',
-            description: 'Раздел управления пользователями и ролями.',
-          },
+          component: AdminView,
           meta: {
             requiresAuth: true,
             roles: ['Administrator'],

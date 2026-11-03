@@ -12,7 +12,7 @@
 @import './pages/login.css';
 @import './pages/register.css';
 @import './pages/account.css';
-
+@import './pages/admin.css';
 
 .placeholder-page {
   padding-top: 56px;
