@@ -2,7 +2,7 @@
 <script setup lang="ts">
   import { ref } from 'vue'
   import { useRouter } from 'vue-router'
-
+  import logo from '@/assets/logo.svg'
   import { useAuthStore } from '@/stores/auth'
 
   const router = useRouter()
@@ -44,7 +44,9 @@
   <header class="site-header">
     <div class="site-header__inner page-container">
       <RouterLink to="/" class="site-header__brand">
-        <span class="site-header__logo">✦</span>
+        <img :src="logo"
+             alt=""
+             class="site-header__logo" />
         <span>РобоРегламент</span>
       </RouterLink>
 
