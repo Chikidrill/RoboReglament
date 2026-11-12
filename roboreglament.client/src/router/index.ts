@@ -14,6 +14,7 @@ import AdminView from '@/views/AdminView.vue'
 import AccountView from '@/views/AccountView.vue'
 import { useAuthStore } from '@/stores/auth'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import DashboardOverviewView from '@/views/DashboardOverviewView.vue'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
 
@@ -78,6 +79,7 @@ const router = createRouter({
       ],
     },
 
+
     {
       path: '/account',
       component: DashboardLayout,
@@ -90,8 +92,14 @@ const router = createRouter({
           name: 'account',
           component: AccountView,
         },
+        {
+          path: 'workspace',
+          name: 'dashboard-overview',
+          component: DashboardOverviewView,
+        },
       ],
     },
+
     {
       path: '/admin',
       component: DashboardLayout,

@@ -3,6 +3,11 @@
   min-height: 100vh;
   background: #ffffff;
 }
+  .dashboard-layout .site-header__inner {
+    width: 100%;
+    max-width: none;
+    padding: 0 24px;
+  }
 
 .dashboard-layout__body {
   display: grid;

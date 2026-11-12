@@ -76,3 +76,44 @@
     flex-wrap: wrap;
   }
 }
+
+/* Выбор рабочего кабинета */
+
+.dashboard-sidebar__workspace {
+  margin-bottom: 32px;
+}
+
+.dashboard-sidebar__role-label {
+  display: block;
+  margin: 0 0 9px;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.dashboard-sidebar__role-select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+  .dashboard-sidebar__role-select:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+.dashboard-sidebar__role-static {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #e9eef9;
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 600;
+}

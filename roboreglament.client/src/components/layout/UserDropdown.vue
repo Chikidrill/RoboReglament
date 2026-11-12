@@ -1,11 +1,17 @@
 
 <script setup lang="ts">
-import {
+  import {
+  computed,
   onMounted,
   onUnmounted,
   ref,
   watch,
 } from 'vue'
+
+  import {
+    dashboardRoles,
+    useDashboardStore,
+  } from '@/stores/dashboard'
 
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
@@ -20,6 +26,14 @@ const logoutError = ref('')
 
 const dropdownRef = ref<HTMLElement | null>(null)
 const triggerRef = ref<HTMLButtonElement | null>(null)
+
+const dashboardStore = useDashboardStore()
+
+const activeRoleLabel = computed(() =>
+  dashboardRoles.find(
+    role => role.value === dashboardStore.activeRole,
+  )?.label ?? authStore.displayRoles,
+)
 
 function toggleMenu() {
   isOpen.value = !isOpen.value
@@ -125,7 +139,7 @@ onUnmounted(() => {
         </span>
 
         <span class="site-header__user-role">
-          {{ authStore.displayRoles }}
+          {{ activeRoleLabel }}
         </span>
       </span>
 
@@ -151,7 +165,7 @@ onUnmounted(() => {
 
       <div class="user-dropdown__divider"></div>
 
-      <RouterLink to="/account"
+      <RouterLink to="/account/workspace"
                   class="user-dropdown__item"
                   @click="closeMenu">
         <span class="user-dropdown__icon"

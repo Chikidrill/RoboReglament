@@ -15,6 +15,7 @@
 @import './pages/admin.css';
 @import './layouts.css';
 @import './components/dashboard-sidebar.css';
+@import './pages/dashboard-overview.css';
 .placeholder-page {
   padding-top: 56px;
 }

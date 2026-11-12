@@ -1,0 +1,121 @@
+
+.dashboard-overview {
+  width: 100%;
+  max-width: 1200px;
+}
+
+.dashboard-overview__heading h1 {
+  margin: 0;
+  font-size: 34px;
+  font-weight: 700;
+}
+
+.dashboard-overview__heading p {
+  margin: 12px 0 0;
+  color: var(--color-muted);
+  font-size: 14px;
+}
+
+.dashboard-overview__welcome {
+  margin-top: 32px;
+  padding: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: #f8f9fc;
+}
+
+  .dashboard-overview__welcome h2 {
+    margin: 0 0 10px;
+    font-size: 22px;
+  }
+
+  .dashboard-overview__welcome p {
+    margin: 0;
+    color: var(--color-muted);
+    font-size: 14px;
+  }
+
+.dashboard-overview__section {
+  margin-top: 36px;
+}
+
+  .dashboard-overview__section h2 {
+    margin: 0 0 18px;
+    font-size: 20px;
+  }
+
+.dashboard-overview__cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.dashboard-overview__card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: #ffffff;
+  transition: border-color 0.15s;
+}
+
+  .dashboard-overview__card:hover {
+    border-color: var(--color-primary);
+  }
+
+  .dashboard-overview__card h3 {
+    margin: 0;
+    font-size: 17px;
+  }
+
+  .dashboard-overview__card p {
+    margin: 0;
+    color: var(--color-muted);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .dashboard-overview__card span {
+    margin-top: auto;
+    padding-top: 8px;
+    color: var(--color-primary);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+.dashboard-overview__note {
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.dashboard-overview__planned {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+  .dashboard-overview__planned span {
+    padding: 10px 14px;
+    border: 1px solid var(--color-border);
+    border-radius: 9px;
+    background: #f8f9fc;
+    color: var(--color-muted);
+    font-size: 13px;
+  }
+
+@media (max-width: 700px) {
+  .dashboard-overview__heading h1 {
+    font-size: 28px;
+  }
+
+  .dashboard-overview__welcome {
+    padding: 22px;
+  }
+
+  .dashboard-overview__cards {
+    grid-template-columns: 1fr;
+  }
+}
