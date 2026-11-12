@@ -79,6 +79,7 @@ public class TournamentApplicationsController : ControllerBase
 
         var participants = await _context.Participants
             .AsNoTracking()
+            .Include(x => x.User)
             .Where(x => x.TeamId == request.TeamId)
             .ToListAsync();
 
@@ -322,6 +323,7 @@ public class TournamentApplicationsController : ControllerBase
 
         var participants = await _context.Participants
             .AsNoTracking()
+            .Include(x => x.User)
             .Where(x => x.TeamId == application.TeamId)
             .ToListAsync();
 
@@ -492,6 +494,7 @@ public class TournamentApplicationsController : ControllerBase
         return query;
     }
 
+
     private static List<TournamentApplicationParticipant> CreateSnapshots(
         IEnumerable<Participant> participants)
     {
@@ -499,12 +502,16 @@ public class TournamentApplicationsController : ControllerBase
             new TournamentApplicationParticipant
             {
                 ParticipantId = x.Id,
-                FirstName = x.FirstName,
-                LastName = x.LastName,
-                MiddleName = x.MiddleName,
+
+                // Актуальные ФИО из зарегистрированного аккаунта.
+                FirstName = x.User.FirstName,
+                LastName = x.User.LastName,
+                MiddleName = x.User.MiddleName,
+
                 BirthDate = x.BirthDate
             }).ToList();
     }
+
 
     private static TournamentApplicationResponse ToResponse(
         TournamentApplication application,
