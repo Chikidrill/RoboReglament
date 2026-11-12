@@ -22,6 +22,9 @@ namespace RoboReglament.Server.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.HasSequence("UserPublicIdSequence", "dbo")
+                .StartsAt(10000000L);
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
                 {
                     b.Property<string>("Id")
@@ -236,6 +239,11 @@ namespace RoboReglament.Server.Migrations
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("bit");
 
+                    b.Property<long>("PublicId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValueSql("NEXT VALUE FOR [dbo].[UserPublicIdSequence]");
+
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("nvarchar(max)");
 
@@ -255,6 +263,9 @@ namespace RoboReglament.Server.Migrations
                         .IsUnique()
                         .HasDatabaseName("UserNameIndex")
                         .HasFilter("[NormalizedUserName] IS NOT NULL");
+
+                    b.HasIndex("PublicId")
+                        .IsUnique();
 
                     b.ToTable("AspNetUsers", (string)null);
                 });
@@ -438,9 +449,16 @@ namespace RoboReglament.Server.Migrations
                     b.Property<int>("TeamId")
                         .HasColumnType("int");
 
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("TeamId");
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("TeamId", "UserId")
+                        .IsUnique();
 
                     b.ToTable("Participants");
                 });
@@ -867,7 +885,15 @@ namespace RoboReglament.Server.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("RoboReglament.Server.Models.Identity.ApplicationUser", "User")
+                        .WithMany("TeamMemberships")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("Team");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("RoboReglament.Server.Models.ProtocolCriterion", b =>
@@ -971,6 +997,8 @@ namespace RoboReglament.Server.Migrations
                     b.Navigation("CoachedTeams");
 
                     b.Navigation("OrganizedTournaments");
+
+                    b.Navigation("TeamMemberships");
                 });
 
             modelBuilder.Entity("RoboReglament.Server.Models.JudgeProtocol", b =>

@@ -1,270 +1,315 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using RoboReglament.Server.Data;
 using RoboReglament.Server.DTOs.Participants;
 using RoboReglament.Server.Models;
 using RoboReglament.Server.Models.Identity;
 
-namespace RoboReglament.Server.Controllers
+namespace RoboReglament.Server.Controllers;
+
+[ApiController]
+[Route("api/teams/{teamId:int}/participants")]
+[Authorize(Roles = UserRoles.Coach)]
+public class ParticipantsController : ControllerBase
 {
-    [ApiController]
-    [Route("api/teams/{teamId:int}/participants")]
-    [Authorize(Roles = UserRoles.Coach)]
-    public class ParticipantsController: ControllerBase
+    private readonly ApplicationDbContext _context;
+    private readonly UserManager<ApplicationUser> _userManager;
+
+    public ParticipantsController(
+        ApplicationDbContext context,
+        UserManager<ApplicationUser> userManager)
     {
-        private readonly ApplicationDbContext _context;
-        private readonly UserManager<ApplicationUser> _userManager;
+        _context = context;
+        _userManager = userManager;
+    }
 
-        public ParticipantsController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
-        {
-            _context = context;
-            _userManager = userManager;
-        }
-        [HttpGet]
-        public async Task<IActionResult> GetAll(int teamId)
-        {
-            var accessError = await CheckTeamAccessAsync(teamId);
+    // Получение состава команды.
+    [HttpGet]
+    public async Task<IActionResult> GetAll(int teamId)
+    {
+        var error = await CheckTeamAccessAsync(teamId);
 
-            if (accessError is not null)
-                return accessError;
+        if (error is not null)
+            return error;
 
-            var participants = await _context.Participants
-                .AsNoTracking()
-                .Where(x => x.TeamId == teamId)
-                .OrderBy(x => x.LastName)
-                .ThenBy(x => x.FirstName)
-                .Select(x => new ParticipantResponse
-                {
-                    Id = x.Id,
-                    TeamId = x.TeamId,
-                    FirstName = x.FirstName,
-                    LastName = x.LastName,
-                    MiddleName = x.MiddleName,
-                    BirthDate = x.BirthDate
-                })
-                .ToListAsync();
-
-            return Ok(participants);
-        }
-
-        // GET /api/teams/{teamId}/participants/{participantId}
-        [HttpGet("{participantId:int}")]
-        public async Task<IActionResult> GetById(
-            int teamId,
-            int participantId)
-        {
-            var accessError = await CheckTeamAccessAsync(teamId);
-
-            if (accessError is not null)
-                return accessError;
-
-            var participant = await _context.Participants
-                .AsNoTracking()
-                .Where(x =>
-                    x.Id == participantId &&
-                    x.TeamId == teamId)
-                .Select(x => new ParticipantResponse
-                {
-                    Id = x.Id,
-                    TeamId = x.TeamId,
-                    FirstName = x.FirstName,
-                    LastName = x.LastName,
-                    MiddleName = x.MiddleName,
-                    BirthDate = x.BirthDate
-                })
-                .FirstOrDefaultAsync();
-
-            if (participant is null)
+        var participants = await _context.Participants
+            .AsNoTracking()
+            .Where(x => x.TeamId == teamId)
+            .OrderBy(x => x.User.LastName)
+            .ThenBy(x => x.User.FirstName)
+            .Select(x => new ParticipantResponse
             {
-                return NotFound(new
-                {
-                    message = "Участник не найден."
-                });
-            }
+                Id = x.Id,
+                TeamId = x.TeamId,
+                PublicId = x.User.PublicId,
+                FirstName = x.User.FirstName,
+                LastName = x.User.LastName,
+                MiddleName = x.User.MiddleName,
+                BirthDate = x.BirthDate
+            })
+            .ToListAsync();
 
-            return Ok(participant);
+        return Ok(participants);
+    }
+
+    // Получение участника команды.
+    [HttpGet("{participantId:int}")]
+    public async Task<IActionResult> GetById(
+        int teamId,
+        int participantId)
+    {
+        var error = await CheckTeamAccessAsync(teamId);
+
+        if (error is not null)
+            return error;
+
+        var participant = await _context.Participants
+            .AsNoTracking()
+            .Where(x =>
+                x.TeamId == teamId &&
+                x.Id == participantId)
+            .Select(x => new ParticipantResponse
+            {
+                Id = x.Id,
+                TeamId = x.TeamId,
+                PublicId = x.User.PublicId,
+                FirstName = x.User.FirstName,
+                LastName = x.User.LastName,
+                MiddleName = x.User.MiddleName,
+                BirthDate = x.BirthDate
+            })
+            .FirstOrDefaultAsync();
+
+        if (participant is null)
+        {
+            return NotFound(new
+            {
+                message = "Участник команды не найден."
+            });
         }
 
-        // POST /api/teams/{teamId}/participants
-        [HttpPost]
-        public async Task<IActionResult> Create(
-            int teamId,
-            CreateParticipantRequest request)
+        return Ok(participant);
+    }
+
+    // Поиск зарегистрированного участника
+    // по публичному ID.
+    [HttpGet("lookup/{publicId:long}")]
+    public async Task<IActionResult> Lookup(
+        int teamId,
+        long publicId)
+    {
+        var error = await CheckTeamAccessAsync(teamId);
+
+        if (error is not null)
+            return error;
+
+        var user = await _userManager.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.PublicId == publicId);
+
+        if (user is null ||
+            !await _userManager.IsInRoleAsync(
+                user, UserRoles.Participant))
         {
-            var accessError = await CheckTeamAccessAsync(teamId);
-
-            if (accessError is not null)
-                return accessError;
-
-            if (string.IsNullOrWhiteSpace(request.FirstName) ||
-                string.IsNullOrWhiteSpace(request.LastName))
+            return NotFound(new
             {
-                return BadRequest(new
-                {
-                    message = "Имя и фамилия обязательны."
-                });
-            }
+                message = "Зарегистрированный участник не найден."
+            });
+        }
 
-            var participant = new Participant
+        var alreadyInTeam = await _context.Participants
+            .AnyAsync(x =>
+                x.TeamId == teamId &&
+                x.UserId == user.Id);
+
+        return Ok(new ParticipantLookupResponse
+        {
+            PublicId = user.PublicId,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            MiddleName = user.MiddleName,
+            AlreadyInTeam = alreadyInTeam
+        });
+    }
+
+    // Добавление зарегистрированного участника
+    // в команду по публичному ID.
+    [HttpPost]
+    public async Task<IActionResult> Create(
+        int teamId,
+        [FromBody] CreateParticipantRequest request)
+    {
+        var error = await CheckTeamAccessAsync(teamId);
+
+        if (error is not null)
+            return error;
+
+        var user = await _userManager.Users
+            .FirstOrDefaultAsync(x =>
+                x.PublicId == request.PublicId);
+
+        if (user is null)
+        {
+            return NotFound(new
             {
-                TeamId = teamId,
-                FirstName = request.FirstName.Trim(),
-                LastName = request.LastName.Trim(),
-                MiddleName = request.MiddleName?.Trim(),
-                BirthDate = request.BirthDate
-            };
+                message = "Пользователь не найден."
+            });
+        }
 
-            _context.Participants.Add(participant);
+        if (!await _userManager.IsInRoleAsync(
+            user, UserRoles.Participant))
+        {
+            return BadRequest(new
+            {
+                message =
+                    "Пользователь не имеет роли участника."
+            });
+        }
 
+        var alreadyExists = await _context.Participants
+            .AnyAsync(x =>
+                x.TeamId == teamId &&
+                x.UserId == user.Id);
+
+        if (alreadyExists)
+        {
+            return Conflict(new
+            {
+                message =
+                    "Пользователь уже состоит в команде."
+            });
+        }
+
+        var participant = new Participant
+        {
+            TeamId = teamId,
+
+            // В БД сохраняем внутренний ID.
+            UserId = user.Id,
+
+            // Временно сохраняем поля совместимости.
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            MiddleName = user.MiddleName,
+            BirthDate = null
+        };
+
+        _context.Participants.Add(participant);
+
+        try
+        {
             await _context.SaveChangesAsync();
-
-            return CreatedAtAction(
-                nameof(GetById),
-                new
-                {
-                    teamId,
-                    participantId = participant.Id
-                },
-                ToResponse(participant));
         }
-
-        // PUT /api/teams/{teamId}/participants/{participantId}
-        [HttpPut("{participantId:int}")]
-        public async Task<IActionResult> Update(
-            int teamId,
-            int participantId,
-            UpdateParticipantRequest request)
+        catch (DbUpdateException ex)
+            when (ex.InnerException is SqlException sql &&
+                  (sql.Number == 2601 || sql.Number == 2627))
         {
-            var accessError = await CheckTeamAccessAsync(teamId);
-
-            if (accessError is not null)
-                return accessError;
-
-            var participant = await _context.Participants
-                .FirstOrDefaultAsync(x =>
-                    x.Id == participantId &&
-                    x.TeamId == teamId);
-
-            if (participant is null)
+            return Conflict(new
             {
-                return NotFound(new
-                {
-                    message = "Участник не найден."
-                });
-            }
-
-            if (string.IsNullOrWhiteSpace(request.FirstName) ||
-                string.IsNullOrWhiteSpace(request.LastName))
-            {
-                return BadRequest(new
-                {
-                    message = "Имя и фамилия обязательны."
-                });
-            }
-
-            participant.FirstName = request.FirstName.Trim();
-            participant.LastName = request.LastName.Trim();
-            participant.MiddleName = request.MiddleName?.Trim();
-            participant.BirthDate = request.BirthDate;
-
-            await _context.SaveChangesAsync();
-
-            return Ok(ToResponse(participant));
+                message =
+                    "Пользователь уже состоит в команде."
+            });
         }
 
-        // DELETE /api/teams/{teamId}/participants/{participantId}
-        [HttpDelete("{participantId:int}")]
-        public async Task<IActionResult> Delete(
-            int teamId,
-            int participantId)
+        var response = new ParticipantResponse
         {
-            var accessError = await CheckTeamAccessAsync(teamId);
+            Id = participant.Id,
+            TeamId = participant.TeamId,
+            PublicId = user.PublicId,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            MiddleName = user.MiddleName,
+            BirthDate = participant.BirthDate
+        };
 
-            if (accessError is not null)
-                return accessError;
-
-            var participant = await _context.Participants
-                .FirstOrDefaultAsync(x =>
-                    x.Id == participantId &&
-                    x.TeamId == teamId);
-
-            if (participant is null)
+        return CreatedAtAction(
+            nameof(GetById),
+            new
             {
-                return NotFound(new
-                {
-                    message = "Участник не найден."
-                });
-            }
+                teamId,
+                participantId = participant.Id
+            },
+            response);
+    }
 
+    // Исключение участника из команды.
+    [HttpDelete("{participantId:int}")]
+    public async Task<IActionResult> Delete(
+        int teamId,
+        int participantId)
+    {
+        var error = await CheckTeamAccessAsync(teamId);
 
-            // Находим исторические записи, связанные с участником.
-            var applicationParticipants = await _context
-                .TournamentApplicationParticipants
-                .Where(x => x.ParticipantId == participantId)
-                .ToListAsync();
+        if (error is not null)
+            return error;
 
-            // Убираем связь с текущим участником,
-            // сохраняя исторические данные.
-            foreach (var item in applicationParticipants)
-            {
-                item.ParticipantId = null;
-                item.Participant = null;
-            }
+        var participant = await _context.Participants
+            .FirstOrDefaultAsync(x =>
+                x.TeamId == teamId &&
+                x.Id == participantId);
 
-            // Удаляем участника из текущего состава команды.
-            _context.Participants.Remove(participant);
-
-            // Сохраняем изменения одной транзакцией EF Core.
-            await _context.SaveChangesAsync();
-
-            return NoContent();
-
-        }
-
-        // Проверка прав доступа к команде.
-        private async Task<IActionResult?> CheckTeamAccessAsync(int teamId)
+        if (participant is null)
         {
-            var teamExists = await _context.Teams
-                .AnyAsync(x => x.Id == teamId);
-
-            if (!teamExists)
+            return NotFound(new
             {
-                return NotFound(new
-                {
-                    message = "Команда не найдена."
-                });
-            }
-
-            var userId = _userManager.GetUserId(User);
-
-            if (userId is null)
-                return Unauthorized();
-
-            var canManage = await _context.TeamCoaches
-                .AnyAsync(x =>
-                    x.TeamId == teamId &&
-                    x.UserId == userId);
-
-            if (!canManage)
-                return Forbid();
-
-            return null;
+                message = "Участник команды не найден."
+            });
         }
 
-        // Преобразование сущности БД в DTO ответа.
-        private static ParticipantResponse ToResponse(Participant participant)
+        // Сохраняем исторические снимки заявок,
+        // убирая только связь с текущим членством.
+        var applicationParticipants = await _context
+            .TournamentApplicationParticipants
+            .Where(x => x.ParticipantId == participantId)
+            .ToListAsync();
+
+        foreach (var item in applicationParticipants)
         {
-            return new ParticipantResponse
-            {
-                Id = participant.Id,
-                TeamId = participant.TeamId,
-                FirstName = participant.FirstName,
-                LastName = participant.LastName,
-                MiddleName = participant.MiddleName,
-                BirthDate = participant.BirthDate
-            };
+            item.ParticipantId = null;
+            item.Participant = null;
         }
+
+        // Удаляется только членство в команде.
+        // Аккаунт пользователя остаётся.
+        _context.Participants.Remove(participant);
+
+        await _context.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    // Проверка прав тренера на команду.
+    private async Task<IActionResult?> CheckTeamAccessAsync(
+        int teamId)
+    {
+        var teamExists = await _context.Teams
+            .AnyAsync(x => x.Id == teamId);
+
+        if (!teamExists)
+        {
+            return NotFound(new
+            {
+                message = "Команда не найдена."
+            });
+        }
+
+        var userId = _userManager.GetUserId(User);
+
+        if (userId is null)
+            return Unauthorized();
+
+        var canManage = await _context.TeamCoaches
+            .AnyAsync(x =>
+                x.TeamId == teamId &&
+                x.UserId == userId);
+
+        if (!canManage)
+            return Forbid();
+
+        return null;
     }
 }

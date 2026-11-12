@@ -39,8 +39,21 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
         base.OnModelCreating(builder);
 
-        // Одна команда не может дважды подать заявку
-        // на один и тот же турнир.
+
+        builder.HasSequence<long>("UserPublicIdSequence", "dbo")
+            .StartsAt(10_000_000L)
+            .IncrementsBy(1);
+
+        builder.Entity<ApplicationUser>()
+            .Property(x => x.PublicId)
+            .HasDefaultValueSql(
+                "NEXT VALUE FOR [dbo].[UserPublicIdSequence]");
+
+
+        builder.Entity<ApplicationUser>()
+            .HasIndex(x => x.PublicId)
+            .IsUnique();
+
         builder.Entity<TournamentApplication>()
             .HasIndex(x => new { x.TournamentId, x.TeamId })
             .IsUnique();
@@ -51,8 +64,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             .HasForeignKey(x => x.TeamId)
             .OnDelete(DeleteBehavior.Restrict);
 
-
-        // Одна заявка — одна аккредитация.
         builder.Entity<Accreditation>()
             .HasOne(x => x.Application)
             .WithOne(x => x.Accreditation)
@@ -168,6 +179,19 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             .WithMany(x => x.CoachedTeams)
             .HasForeignKey(x => x.UserId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<Participant>()
+            .HasOne(x => x.User)
+            .WithMany(x => x.TeamMemberships)
+            .HasForeignKey(x => x.UserId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+
+        builder.Entity<Participant>()
+            .HasIndex(x => new { x.TeamId, x.UserId })
+            .IsUnique();
+
+
         builder.Entity<TournamentApplicationParticipant>()
             .HasIndex(x => new { x.TournamentApplicationId, x.ParticipantId })
             .IsUnique()
