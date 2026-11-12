@@ -77,15 +77,18 @@ public class AuthController : ControllerBase
             user,
             isPersistent: false);
 
+
         return Ok(new
         {
             user.Id,
+            user.PublicId,
             user.Email,
             user.FirstName,
             user.LastName,
             user.MiddleName,
             Role = UserRoles.Participant
         });
+
     }
     [HttpPost("login")]
     public async Task<IActionResult> Login(LoginRequest request)
@@ -116,15 +119,18 @@ public class AuthController : ControllerBase
 
         var roles = await _userManager.GetRolesAsync(user);
 
+
         return Ok(new
         {
             user.Id,
+            user.PublicId,
             user.Email,
             user.FirstName,
             user.LastName,
             user.MiddleName,
             Roles = roles
         });
+
     }
     [Authorize]
     [HttpPost("logout")]
@@ -147,15 +153,18 @@ public class AuthController : ControllerBase
 
         var roles = await _userManager.GetRolesAsync(user);
 
+
         return Ok(new
         {
             user.Id,
+            user.PublicId,
             user.Email,
             user.FirstName,
             user.LastName,
             user.MiddleName,
             Roles = roles
         });
+
     }
 
     [Authorize]
