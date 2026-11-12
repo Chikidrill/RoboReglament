@@ -14,6 +14,7 @@ export interface RegisterRequest {
 
 export interface AuthUser {
   id: string
+  publicId: number
   email: string
   firstName: string
   lastName: string

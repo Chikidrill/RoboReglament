@@ -1,374 +1,407 @@
 
-<script setup lang="ts">import {
-  onUnmounted,
-  ref,
-  watch,
-} from 'vue'
-import { useRoute } from 'vue-router'
+<script setup lang="ts">
+  import { onUnmounted, ref, watch } from 'vue'
+  import { useRoute } from 'vue-router'
 
-import {
-  getMyTeams,
-  updateTeam,
-} from '@/api/teams'
+  import { getMyTeams, updateTeam } from '@/api/teams'
 
-import {
-  getTeamParticipants,
-  createParticipant,
-  updateParticipant,
-  deleteParticipant,
-} from '@/api/participants'
+  import {
+    getTeamParticipants,
+    lookupParticipant,
+    createParticipant,
+    deleteParticipant,
+  } from '@/api/participants'
 
-import type { Team } from '@/types/team'
-import type {
-  TeamParticipant,
-  ParticipantRequest,
-} from '@/types/participant'
+  import type { Team } from '@/types/teams'
 
-const route = useRoute()
+  import type {
+    TeamParticipant,
+    ParticipantLookupResponse,
+  } from '@/types/participant'
 
-const team = ref<Team | null>(null)
-const participants = ref<TeamParticipant[]>([])
+  const route = useRoute()
 
-const isLoading = ref(true)
-const loadError = ref('')
-const successMessage = ref('')
+  const team = ref<Team | null>(null)
+  const participants = ref<TeamParticipant[]>([])
 
-const isEditingTeam = ref(false)
-const isSavingTeam = ref(false)
-const teamError = ref('')
+  const isLoading = ref(true)
+  const loadError = ref('')
+  const successMessage = ref('')
 
-const teamForm = ref({
-  name: '',
-  organization: '',
-  city: '',
-})
+  // Редактирование команды
+  const isEditingTeam = ref(false)
+  const isSavingTeam = ref(false)
+  const teamError = ref('')
 
-const showParticipantForm = ref(false)
-const editingParticipantId = ref<number | null>(null)
-const isSavingParticipant = ref(false)
-const participantError = ref('')
-const deleteError = ref('')
-const deletingParticipantId = ref<number | null>(null)
+  const teamForm = ref({
+    name: '',
+    organization: '',
+    city: '',
+  })
 
-function emptyParticipantForm() {
-  return {
-    firstName: '',
-    lastName: '',
-    middleName: '',
-    birthDate: '',
-  }
-}
+  // Поиск и добавление участников
+  const showAddForm = ref(false)
+  const publicIdInput = ref('')
+  const lookupResult = ref<ParticipantLookupResponse | null>(null)
 
-const participantForm = ref(emptyParticipantForm())
+  const isSearching = ref(false)
+  const isAdding = ref(false)
 
-let loadController: AbortController | null = null
+  const searchError = ref('')
+  const addError = ref('')
+  const deleteError = ref('')
+  const deletingParticipantId = ref<number | null>(null)
 
-function getTeamId(): number {
-  const id = Number(route.params.id)
-  return Number.isSafeInteger(id) && id > 0 ? id : 0
-}
+  let loadController: AbortController | null = null
+  let searchController: AbortController | null = null
 
-function getFullName(participant: TeamParticipant) {
-  return [
-    participant.lastName,
-    participant.firstName,
-    participant.middleName,
-  ].filter(Boolean).join(' ')
-}
+  function getTeamId(): number {
+    const id = Number(route.params.id)
 
-function formatDate(value: string | null): string {
-  if (!value) {
-    return 'Не указана'
+    return Number.isSafeInteger(id) && id > 0
+      ? id
+      : 0
   }
 
-  const [year, month, day] = value.split('-')
-  return `${day}.${month}.${year}`
-}
-
-function sortParticipants() {
-  participants.value.sort((a, b) =>
-    getFullName(a).localeCompare(
-      getFullName(b),
-      'ru',
-    ),
-  )
-}
-
-function syncParticipantsCount() {
-  if (team.value) {
-    team.value.participantsCount = participants.value.length
-  }
-}
-
-async function loadDetails() {
-  loadController?.abort()
-
-  const controller = new AbortController()
-  loadController = controller
-
-  isLoading.value = true
-  loadError.value = ''
-  team.value = null
-  participants.value = []
-
-  isEditingTeam.value = false
-  showParticipantForm.value = false
-  editingParticipantId.value = null
-
-  const teamId = getTeamId()
-
-  if (!teamId) {
-    loadError.value = 'Некорректный идентификатор команды.'
-    isLoading.value = false
-    return
+  function getFullName(person: {
+    lastName: string
+    firstName: string
+    middleName: string | null
+  }): string {
+    return [
+      person.lastName,
+      person.firstName,
+      person.middleName,
+    ]
+      .filter(Boolean)
+      .join(' ')
   }
 
-  try {
-    // Проверяем, что команда принадлежит тренеру.
-    const myTeams = await getMyTeams(controller.signal)
-    const myTeam = myTeams.find(item => item.id === teamId)
-
-    if (!myTeam) {
-      loadError.value =
-        'Команда не найдена среди ваших команд.'
-      return
-    }
-
-    const result = await getTeamParticipants(
-      teamId,
-      controller.signal,
+  function sortParticipants() {
+    participants.value.sort((a, b) =>
+      getFullName(a).localeCompare(getFullName(b), 'ru'),
     )
+  }
 
-    if (controller.signal.aborted) {
+  function syncParticipantsCount() {
+    if (team.value) {
+      team.value.participantsCount = participants.value.length
+    }
+  }
+
+  // Загрузка информации о команде
+  async function loadDetails() {
+    loadController?.abort()
+    searchController?.abort()
+
+    const controller = new AbortController()
+    loadController = controller
+
+    isLoading.value = true
+    loadError.value = ''
+    successMessage.value = ''
+
+    team.value = null
+    participants.value = []
+
+    isEditingTeam.value = false
+    showAddForm.value = false
+    resetLookup()
+
+    const teamId = getTeamId()
+
+    if (!teamId) {
+      loadError.value = 'Некорректный ID команды.'
+      isLoading.value = false
       return
     }
 
-    team.value = myTeam
-    participants.value = result
-    sortParticipants()
-    syncParticipantsCount()
-  } catch (error) {
-    if (!controller.signal.aborted) {
-      loadError.value =
+    try {
+      // Получаем только команды авторизованного тренера
+      const myTeams = await getMyTeams(controller.signal)
+
+      const myTeam = myTeams.find(
+        item => item.id === teamId,
+      )
+
+      if (!myTeam) {
+        loadError.value =
+          'Команда не найдена среди ваших команд.'
+        return
+      }
+
+      const result = await getTeamParticipants(
+        teamId,
+        controller.signal,
+      )
+
+      if (controller.signal.aborted) {
+        return
+      }
+
+      team.value = myTeam
+      participants.value = result
+
+      sortParticipants()
+      syncParticipantsCount()
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        loadError.value =
+          error instanceof Error
+            ? error.message
+            : 'Не удалось загрузить команду.'
+      }
+    } finally {
+      if (!controller.signal.aborted) {
+        isLoading.value = false
+      }
+    }
+  }
+
+  // Редактирование команды
+  function startEditingTeam() {
+    if (!team.value) return
+
+    teamForm.value = {
+      name: team.value.name,
+      organization: team.value.organization ?? '',
+      city: team.value.city ?? '',
+    }
+
+    teamError.value = ''
+    isEditingTeam.value = true
+  }
+
+  function cancelEditingTeam() {
+    if (isSavingTeam.value) return
+
+    isEditingTeam.value = false
+    teamError.value = ''
+  }
+
+  async function saveTeam() {
+    if (!team.value || isSavingTeam.value) return
+
+    const name = teamForm.value.name.trim()
+
+    if (!name) {
+      teamError.value = 'Введите название команды.'
+      return
+    }
+
+    isSavingTeam.value = true
+    teamError.value = ''
+    successMessage.value = ''
+
+    try {
+      const updated = await updateTeam(team.value.id, {
+        name,
+        organization:
+          teamForm.value.organization.trim() || null,
+        city: teamForm.value.city.trim() || null,
+      })
+
+      team.value = updated
+      isEditingTeam.value = false
+      successMessage.value = 'Данные команды обновлены.'
+    } catch (error) {
+      teamError.value =
         error instanceof Error
           ? error.message
-          : 'Не удалось загрузить команду.'
-    }
-  } finally {
-    if (!controller.signal.aborted) {
-      isLoading.value = false
+          : 'Не удалось обновить команду.'
+    } finally {
+      isSavingTeam.value = false
     }
   }
-}
 
-function startEditingTeam() {
-  if (!team.value) {
-    return
+  // Сброс результатов поиска
+  function resetLookup() {
+    searchController?.abort()
+
+    lookupResult.value = null
+    searchError.value = ''
+    addError.value = ''
+    isSearching.value = false
   }
 
-  teamForm.value = {
-    name: team.value.name,
-    organization: team.value.organization ?? '',
-    city: team.value.city ?? '',
+  function openAddForm() {
+    publicIdInput.value = ''
+    resetLookup()
+
+    successMessage.value = ''
+    showAddForm.value = true
   }
 
-  teamError.value = ''
-  isEditingTeam.value = true
-}
+  function closeAddForm() {
+    if (isAdding.value) return
 
-function cancelEditingTeam() {
-  if (isSavingTeam.value) {
-    return
+    showAddForm.value = false
+    publicIdInput.value = ''
+    resetLookup()
   }
 
-  isEditingTeam.value = false
-  teamError.value = ''
-}
+  // Поиск зарегистрированного участника по PublicId
+  async function searchUser() {
+    if (!team.value || isAdding.value) return
 
-async function saveTeam() {
-  if (!team.value || isSavingTeam.value) {
-    return
-  }
+    resetLookup()
 
-  const name = teamForm.value.name.trim()
+    const rawId = publicIdInput.value.trim()
+    const publicId = Number(rawId)
 
-  if (!name) {
-    teamError.value = 'Введите название команды.'
-    return
-  }
+    if (
+      !/^[1-9]\d*$/.test(rawId) ||
+      !Number.isSafeInteger(publicId)
+    ) {
+      searchError.value =
+        'Введите корректный числовой ID пользователя.'
+      return
+    }
 
-  isSavingTeam.value = true
-  teamError.value = ''
-  successMessage.value = ''
+    const controller = new AbortController()
+    searchController = controller
 
-  try {
-    const updated = await updateTeam(team.value.id, {
-      name,
-      organization: teamForm.value.organization.trim() || null,
-      city: teamForm.value.city.trim() || null,
-    })
+    isSearching.value = true
+    searchError.value = ''
+    addError.value = ''
 
-    team.value = updated
-    isEditingTeam.value = false
-    successMessage.value = 'Данные команды обновлены.'
-  } catch (error) {
-    teamError.value =
-      error instanceof Error
-        ? error.message
-        : 'Не удалось сохранить команду.'
-  } finally {
-    isSavingTeam.value = false
-  }
-}
-
-function startAddingParticipant() {
-  participantForm.value = emptyParticipantForm()
-  editingParticipantId.value = null
-  participantError.value = ''
-  deleteError.value = ''
-  showParticipantForm.value = true
-}
-
-function startEditingParticipant(participant: TeamParticipant) {
-  participantForm.value = {
-    firstName: participant.firstName,
-    lastName: participant.lastName,
-    middleName: participant.middleName ?? '',
-    birthDate: participant.birthDate ?? '',
-  }
-
-  editingParticipantId.value = participant.id
-  participantError.value = ''
-  deleteError.value = ''
-  showParticipantForm.value = true
-}
-
-function cancelParticipantForm() {
-  if (isSavingParticipant.value) {
-    return
-  }
-
-  showParticipantForm.value = false
-  editingParticipantId.value = null
-  participantError.value = ''
-}
-
-async function saveParticipant() {
-  if (!team.value || isSavingParticipant.value) {
-    return
-  }
-
-  const data: ParticipantRequest = {
-    firstName: participantForm.value.firstName.trim(),
-    lastName: participantForm.value.lastName.trim(),
-    middleName: participantForm.value.middleName.trim() || null,
-    birthDate: participantForm.value.birthDate || null,
-  }
-
-  if (!data.firstName || !data.lastName) {
-    participantError.value =
-      'Имя и фамилия участника обязательны.'
-    return
-  }
-
-  isSavingParticipant.value = true
-  participantError.value = ''
-  successMessage.value = ''
-
-  try {
-    if (editingParticipantId.value !== null) {
-      const updated = await updateParticipant(
+    try {
+      lookupResult.value = await lookupParticipant(
         team.value.id,
-        editingParticipantId.value,
-        data,
+        publicId,
+        controller.signal,
       )
+    } catch (error) {
+      if (!controller.signal.aborted) {
+        searchError.value =
+          error instanceof Error
+            ? error.message
+            : 'Не удалось найти пользователя.'
+      }
+    } finally {
+      if (!controller.signal.aborted) {
+        isSearching.value = false
+      }
+    }
+  }
 
-      participants.value = participants.value.map(
-        item => item.id === updated.id ? updated : item,
-      )
+  // Добавление найденного аккаунта в команду
+  async function addParticipant() {
+    if (
+      !team.value ||
+      !lookupResult.value ||
+      lookupResult.value.alreadyInTeam ||
+      isAdding.value
+    ) {
+      return
+    }
 
-      successMessage.value =
-        'Данные участника обновлены.'
-    } else {
+    const teamId = team.value.id
+    const publicId = lookupResult.value.publicId
+
+    isAdding.value = true
+    addError.value = ''
+    successMessage.value = ''
+
+    try {
       const created = await createParticipant(
-        team.value.id,
-        data,
+        teamId,
+        { publicId },
       )
 
       participants.value.push(created)
+
+      sortParticipants()
+      syncParticipantsCount()
+
       successMessage.value =
-        'Участник добавлен в команду.'
+        `Участник ${getFullName(created)} добавлен в команду.`
+
+      closeAddFormAfterSuccess()
+    } catch (error) {
+      addError.value =
+        error instanceof Error
+          ? error.message
+          : 'Не удалось добавить участника.'
+    } finally {
+      isAdding.value = false
+    }
+  }
+
+  function closeAddFormAfterSuccess() {
+    showAddForm.value = false
+    publicIdInput.value = ''
+    resetLookup()
+  }
+
+  // Исключение участника из команды
+  async function removeParticipant(
+    participant: TeamParticipant,
+  ) {
+    if (
+      !team.value ||
+      deletingParticipantId.value !== null
+    ) {
+      return
     }
 
-    sortParticipants()
-    syncParticipantsCount()
-
-    showParticipantForm.value = false
-    editingParticipantId.value = null
-    participantForm.value = emptyParticipantForm()
-  } catch (error) {
-    participantError.value =
-      error instanceof Error
-        ? error.message
-        : 'Не удалось сохранить участника.'
-  } finally {
-    isSavingParticipant.value = false
-  }
-}
-
-async function removeParticipant(participant: TeamParticipant) {
-  if (!team.value || deletingParticipantId.value !== null) {
-    return
-  }
-
-  const confirmed = window.confirm(
-    `Удалить участника «${getFullName(participant)}» из команды?`,
-  )
-
-  if (!confirmed) {
-    return
-  }
-
-  deletingParticipantId.value = participant.id
-  deleteError.value = ''
-  successMessage.value = ''
-
-  try {
-    await deleteParticipant(team.value.id, participant.id)
-
-    participants.value = participants.value.filter(
-      item => item.id !== participant.id,
+    const confirmed = window.confirm(
+      `Исключить ${getFullName(participant)} из команды?`,
     )
 
-    if (editingParticipantId.value === participant.id) {
-      cancelParticipantForm()
+    if (!confirmed) return
+
+    deletingParticipantId.value = participant.id
+    deleteError.value = ''
+    successMessage.value = ''
+
+    try {
+      await deleteParticipant(
+        team.value.id,
+        participant.id,
+      )
+
+      participants.value = participants.value.filter(
+        item => item.id !== participant.id,
+      )
+
+      syncParticipantsCount()
+
+      // Если этот пользователь найден в форме,
+      // обновляем признак членства.
+      if (
+        lookupResult.value?.publicId ===
+        participant.publicId
+      ) {
+        lookupResult.value.alreadyInTeam = false
+      }
+
+      successMessage.value =
+        'Участник исключён из команды.'
+    } catch (error) {
+      deleteError.value =
+        error instanceof Error
+          ? error.message
+          : 'Не удалось исключить участника.'
+    } finally {
+      deletingParticipantId.value = null
     }
-
-    syncParticipantsCount()
-
-    successMessage.value =
-      'Участник удалён из команды.'
-  } catch (error) {
-    deleteError.value =
-      error instanceof Error
-        ? error.message
-        : 'Не удалось удалить участника.'
-  } finally {
-    deletingParticipantId.value = null
   }
-}
 
-watch(
-  () => route.params.id,
-  () => {
-    void loadDetails()
-  },
-  { immediate: true },
-)
+  // Реакция на переход между командами
+  watch(
+    () => route.params.id,
+    () => {
+      void loadDetails()
+    },
+    { immediate: true },
+  )
 
-onUnmounted(() => {
-  loadController?.abort()
-})</script>
+  onUnmounted(() => {
+    loadController?.abort()
+    searchController?.abort()
+  })
+</script>
 
 <template>
   <section class="coach-team-details">
@@ -386,13 +419,21 @@ onUnmounted(() => {
     <div v-else-if="loadError"
          class="coach-team-details__message"
          role="alert">
-      {{ loadError }}
+      <p>{{ loadError }}</p>
+
+      <button type="button"
+              class="btn btn-outline"
+              @click="loadDetails">
+        Повторить
+      </button>
     </div>
 
     <template v-else-if="team">
+      <!-- Информация о команде -->
       <header class="coach-team-details__heading">
         <div>
           <h1>{{ team.name }}</h1>
+
           <p>
             {{ team.organization || 'Организация не указана' }}
             ·
@@ -463,122 +504,142 @@ onUnmounted(() => {
 
           <button type="submit"
                   class="btn btn-primary"
-                  :disabled="isSavingTeam || !teamForm.name.trim()">
+                  :disabled="
+              isSavingTeam || !teamForm.name.trim()
+            ">
             {{ isSavingTeam ? 'Сохранение...' : 'Сохранить' }}
           </button>
         </div>
       </form>
 
-      <!-- Состав команды -->
+      <!-- Заголовок состава -->
       <div class="coach-team-details__section-heading">
         <div>
           <h2>Состав команды</h2>
           <p>Участников: {{ participants.length }}</p>
         </div>
 
-        <button v-if="!showParticipantForm"
+        <button v-if="!showAddForm"
                 type="button"
                 class="btn btn-primary"
-                @click="startAddingParticipant">
+                @click="openAddForm">
           + Добавить участника
         </button>
       </div>
 
-      <!-- Добавление / редактирование участника -->
-      <form v-if="showParticipantForm"
-            class="coach-team-details__panel"
-            @submit.prevent="saveParticipant">
-        <h2>
-          {{
-            editingParticipantId === null
-              ? 'Новый участник'
-              : 'Редактирование участника'
-          }}
-        </h2>
+      <!-- Поиск и добавление -->
+      <div v-if="showAddForm"
+           class="coach-team-details__panel">
+        <h2>Добавить участника</h2>
 
-        <div class="coach-team-details__fields">
-          <label>
-            Фамилия *
-            <input v-model="participantForm.lastName"
+        <p class="coach-team-details__hint">
+          Введите публичный ID зарегистрированного
+          пользователя. Его можно узнать в личном
+          кабинете участника.
+        </p>
+
+        <form class="coach-team-details__lookup"
+              @submit.prevent="searchUser">
+          <label for="participant-public-id">
+            Публичный ID пользователя
+          </label>
+
+          <div class="coach-team-details__lookup-row">
+            <input id="participant-public-id"
+                   v-model="publicIdInput"
                    type="text"
-                   maxlength="100"
-                   required
-                   :disabled="isSavingParticipant" />
-          </label>
+                   inputmode="numeric"
+                   autocomplete="off"
+                   placeholder="Например, 10000042"
+                   :disabled="isAdding"
+                   @input="resetLookup" />
 
-          <label>
-            Имя *
-            <input v-model="participantForm.firstName"
-                   type="text"
-                   maxlength="100"
-                   required
-                   :disabled="isSavingParticipant" />
-          </label>
+            <button type="submit"
+                    class="btn btn-primary"
+                    :disabled="isSearching || isAdding">
+              {{ isSearching ? 'Поиск...' : 'Найти' }}
+            </button>
+          </div>
+        </form>
 
-          <label>
-            Отчество
-            <input v-model="participantForm.middleName"
-                   type="text"
-                   maxlength="100"
-                   :disabled="isSavingParticipant" />
-          </label>
-
-          <label>
-            Дата рождения
-            <input v-model="participantForm.birthDate"
-                   type="date"
-                   :disabled="isSavingParticipant" />
-          </label>
-        </div>
-
-        <p v-if="participantError"
+        <p v-if="searchError"
            class="coach-team-details__error"
            role="alert">
-          {{ participantError }}
+          {{ searchError }}
+        </p>
+
+        <!-- Результат поиска -->
+        <div v-if="lookupResult"
+             class="coach-team-details__found-user">
+          <div>
+            <strong>
+              {{ getFullName(lookupResult) }}
+            </strong>
+
+            <p>
+              Публичный ID:
+              {{ lookupResult.publicId }}
+            </p>
+
+            <p v-if="lookupResult.alreadyInTeam"
+               class="coach-team-details__already">
+              Пользователь уже состоит в команде.
+            </p>
+          </div>
+
+          <button type="button"
+                  class="btn btn-primary"
+                  :disabled="
+              lookupResult.alreadyInTeam || isAdding
+            "
+                  @click="addParticipant">
+            {{
+              isAdding
+                ? 'Добавление...'
+                : 'Добавить в команду'
+            }}
+          </button>
+        </div>
+
+        <p v-if="addError"
+           class="coach-team-details__error"
+           role="alert">
+          {{ addError }}
         </p>
 
         <div class="coach-team-details__actions">
           <button type="button"
                   class="btn btn-outline"
-                  :disabled="isSavingParticipant"
-                  @click="cancelParticipantForm">
-            Отмена
-          </button>
-
-          <button type="submit"
-                  class="btn btn-primary"
-                  :disabled="
-              isSavingParticipant ||
-              !participantForm.firstName.trim() ||
-              !participantForm.lastName.trim()
-            ">
-            {{
-              isSavingParticipant
-                ? 'Сохранение...'
-                : 'Сохранить участника'
-            }}
+                  :disabled="isAdding"
+                  @click="closeAddForm">
+            Закрыть
           </button>
         </div>
-      </form>
+      </div>
 
+      <!-- Ошибка удаления -->
       <p v-if="deleteError"
          class="coach-team-details__error"
          role="alert">
         {{ deleteError }}
       </p>
 
+      <!-- Пустая команда -->
       <div v-if="participants.length === 0"
            class="coach-team-details__message">
         В команде пока нет участников.
+        Добавьте зарегистрированного пользователя
+        по его публичному ID.
       </div>
 
+      <!-- Таблица состава -->
       <div v-else
            class="coach-team-details__table-wrapper">
         <table class="coach-team-details__table">
           <thead>
             <tr>
               <th>ФИО</th>
-              <th>Дата рождения</th>
+              <th>Публичный ID</th>
               <th>Действия</th>
             </tr>
           </thead>
@@ -591,35 +652,22 @@ onUnmounted(() => {
               </td>
 
               <td>
-                {{ formatDate(participant.birthDate) }}
+                {{ participant.publicId }}
               </td>
 
               <td>
-                <div class="coach-team-details__row-actions">
-                  <button type="button"
-                          class="btn btn-outline"
-                          :disabled="
-                      isSavingParticipant ||
-                      deletingParticipantId !== null
-                    "
-                          @click="startEditingParticipant(participant)">
-                    Изменить
-                  </button>
-
-                  <button type="button"
-                          class="coach-team-details__delete"
-                          :disabled="
-                      isSavingParticipant ||
-                      deletingParticipantId !== null
-                    "
-                          @click="removeParticipant(participant)">
-                    {{
-                      deletingParticipantId === participant.id
-                        ? 'Удаление...'
-                        : 'Удалить'
-                    }}
-                  </button>
-                </div>
+                <button type="button"
+                        class="coach-team-details__delete"
+                        :disabled="
+                    deletingParticipantId !== null
+                  "
+                        @click="removeParticipant(participant)">
+                  {{
+                    deletingParticipantId === participant.id
+                      ? 'Исключение...'
+                      : 'Исключить'
+                  }}
+                </button>
               </td>
             </tr>
           </tbody>

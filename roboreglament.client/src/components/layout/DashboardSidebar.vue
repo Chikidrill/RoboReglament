@@ -33,13 +33,10 @@
 
     dashboardStore.setRole(role)
 
-    // После переключения открываем обзор
-    // выбранного рабочего кабинета.
     void router.push({ name: 'dashboard-overview' })
   }
 
-  // При прямом открытии /admin автоматически
-  // выбираем административный кабинет.
+
   watch(
     () => route.path,
     path => {
@@ -48,16 +45,16 @@
         path.startsWith('/admin/')
       ) {
         dashboardStore.setRole('Administrator')
-      if (
+      } else if (
         path === '/account/teams' ||
         path.startsWith('/account/teams/')
       ) {
         dashboardStore.setRole('Coach')
       }
-      }
     },
     { immediate: true },
   )
+
 </script>
 
 <template>
