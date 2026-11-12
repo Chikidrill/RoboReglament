@@ -1,0 +1,197 @@
+
+.coach-teams {
+  width: 100%;
+  max-width: 1200px;
+}
+
+.coach-teams__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+  .coach-teams__heading h1 {
+    margin: 0;
+    font-size: 34px;
+    font-weight: 700;
+  }
+
+  .coach-teams__heading p {
+    margin: 12px 0 0;
+    color: var(--color-muted);
+    font-size: 14px;
+  }
+
+.coach-teams__list-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin: 36px 0 20px;
+}
+
+  .coach-teams__list-heading h2 {
+    margin: 0;
+    font-size: 21px;
+  }
+
+  .coach-teams__list-heading span {
+    color: var(--color-muted);
+    font-size: 13px;
+  }
+
+.coach-teams__form,
+.coach-teams__empty,
+.coach-teams__message {
+  margin-top: 28px;
+  padding: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+  .coach-teams__form h2 {
+    margin: 0 0 26px;
+    font-size: 21px;
+  }
+
+.coach-teams__field {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+  .coach-teams__field label {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .coach-teams__field input {
+    width: 100%;
+    min-height: 46px;
+    padding: 0 14px;
+    border: 1px solid var(--color-border);
+    border-radius: 9px;
+    background: #ffffff;
+    color: var(--color-text);
+    outline: none;
+  }
+
+    .coach-teams__field input:focus {
+      border-color: var(--color-primary);
+    }
+
+.coach-teams__form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  margin-top: 22px;
+}
+
+.coach-teams__form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.coach-teams__error {
+  color: #b42336;
+  font-size: 13px;
+}
+
+.coach-teams__success {
+  margin: 22px 0;
+  padding: 14px 18px;
+  border: 1px solid #b7dfc5;
+  border-radius: 10px;
+  background: #effaf2;
+  color: #22703a;
+  font-size: 13px;
+}
+
+.coach-teams__empty,
+.coach-teams__message {
+  text-align: center;
+}
+
+  .coach-teams__empty h3 {
+    margin: 0 0 12px;
+    font-size: 19px;
+  }
+
+  .coach-teams__empty p,
+  .coach-teams__message p {
+    margin: 0 0 20px;
+    color: var(--color-muted);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+.coach-teams__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.coach-team-card {
+  padding: 24px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.coach-team-card__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.coach-team-card h3 {
+  margin: 0;
+  font-size: 19px;
+}
+
+.coach-team-card__count {
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: #edf1fa;
+  color: var(--color-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.coach-team-card__details {
+  margin-top: 22px;
+}
+
+  .coach-team-card__details p {
+    margin: 9px 0;
+    color: var(--color-muted);
+    font-size: 13px;
+  }
+
+  .coach-team-card__details strong {
+    color: var(--color-text);
+  }
+
+@media (max-width: 700px) {
+  .coach-teams__grid,
+  .coach-teams__form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .coach-teams__heading h1 {
+    font-size: 28px;
+  }
+
+  .coach-teams__form,
+  .coach-teams__empty {
+    padding: 20px;
+  }
+}

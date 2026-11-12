@@ -115,6 +115,17 @@ const currentWorkspace = computed<WorkspaceInfo>(() => {
           </p>
           <span>Открыть раздел →</span>
         </RouterLink>
+        <RouterLink v-if="dashboardStore.activeRole === 'Coach'"
+                    to="/account/teams"
+                    class="dashboard-overview__card">
+          <h3>Мои команды</h3>
+
+          <p>
+            Просмотр команд и управление их составом.
+          </p>
+
+          <span>Открыть раздел →</span>
+        </RouterLink>
       </div>
     </div>
   </section>

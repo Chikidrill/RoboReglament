@@ -44,6 +44,38 @@ public class TeamsController : ControllerBase
         return Ok(teams);
     }
 
+
+    // GET: /api/teams/mine
+    [Authorize(Roles = UserRoles.Coach)]
+    [HttpGet("mine")]
+    public async Task<ActionResult<IEnumerable<TeamResponse>>> GetMine()
+    {
+        var userId = _userManager.GetUserId(User);
+
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var teams = await _context.Teams
+            .AsNoTracking()
+            .Where(team => team.Coaches.Any(coach =>
+                coach.UserId == userId))
+            .OrderBy(team => team.Name)
+            .Select(team => new TeamResponse
+            {
+                Id = team.Id,
+                Name = team.Name,
+                Organization = team.Organization,
+                City = team.City,
+                ParticipantsCount = team.Participants.Count
+            })
+            .ToListAsync();
+
+        return Ok(teams);
+    }
+
+
     // GET: /api/teams/5
     [HttpGet("{id:int}")]
     public async Task<ActionResult<TeamResponse>> GetById(int id)

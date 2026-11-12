@@ -16,6 +16,7 @@
 @import './layouts.css';
 @import './components/dashboard-sidebar.css';
 @import './pages/dashboard-overview.css';
+@import './pages/coach-teams.css';
 .placeholder-page {
   padding-top: 56px;
 }
