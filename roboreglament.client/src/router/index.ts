@@ -13,7 +13,8 @@ import RegisterView from '@/views/RegisterView.vue'
 import AdminView from '@/views/AdminView.vue'
 import AccountView from '@/views/AccountView.vue'
 import { useAuthStore } from '@/stores/auth'
-
+import DashboardLayout from '@/layouts/DashboardLayout.vue'
+import DashboardOverviewView from '@/views/DashboardOverviewView.vue'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
 
@@ -67,14 +68,6 @@ const router = createRouter({
           component: RegisterView,
         },
         {
-          path: 'account',
-          name: 'account',
-          component: AccountView,
-          meta: {
-            requiresAuth: true,
-          },
-        },
-        {
           path: 'forbidden',
           name: 'forbidden',
           component: PlaceholderView,
@@ -83,17 +76,46 @@ const router = createRouter({
             description: 'У вашей учётной записи нет прав для просмотра этой страницы.',
           },
         },
+      ],
+    },
+
+
+    {
+      path: '/account',
+      component: DashboardLayout,
+      meta: {
+        requiresAuth: true,
+      },
+      children: [
         {
-          path: 'admin',
-          name: 'admin',
-          component: AdminView,
-          meta: {
-            requiresAuth: true,
-            roles: ['Administrator'],
-          },
+          path: '',
+          name: 'account',
+          component: AccountView,
+        },
+        {
+          path: 'workspace',
+          name: 'dashboard-overview',
+          component: DashboardOverviewView,
         },
       ],
     },
+
+    {
+      path: '/admin',
+      component: DashboardLayout,
+      meta: {
+        requiresAuth: true,
+        roles: ['Administrator'],
+      },
+      children: [
+        {
+          path: '',
+          name: 'admin',
+          component: AdminView,
+        },
+      ],
+    },
+
   ],
 })
 

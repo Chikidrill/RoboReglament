@@ -44,6 +44,7 @@ export const useAuthStore = defineStore('auth', () => {
 
 
   const roleNames: Record<string, string> = {
+    'Platform Owner': 'Владелец платформы',
     Administrator: 'Администратор',
     Organizer: 'Организатор',
     Judge: 'Судья',
