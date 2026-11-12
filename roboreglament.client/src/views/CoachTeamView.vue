@@ -282,6 +282,15 @@ onUnmounted(() => {
             {{ team.city || 'Не указан' }}
           </p>
         </div>
+
+        <RouterLink :to="{
+            name: 'coach-team-details',
+            params: { id: team.id },
+          }"
+          class="coach-team-card__open">
+          Открыть команду →
+        </RouterLink>
+
       </article>
     </div>
   </section>

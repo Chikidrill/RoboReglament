@@ -1,0 +1,217 @@
+
+.coach-team-details {
+  width: 100%;
+  max-width: 1200px;
+}
+
+.coach-team-details__back {
+  display: inline-block;
+  margin-bottom: 28px;
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+  .coach-team-details__back:hover {
+    text-decoration: underline;
+  }
+
+.coach-team-details__heading,
+.coach-team-details__section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+  .coach-team-details__heading h1 {
+    margin: 0;
+    font-size: 34px;
+    font-weight: 700;
+  }
+
+  .coach-team-details__heading p,
+  .coach-team-details__section-heading p {
+    margin: 10px 0 0;
+    color: var(--color-muted);
+    font-size: 13px;
+  }
+
+.coach-team-details__section-heading {
+  margin: 40px 0 22px;
+}
+
+  .coach-team-details__section-heading h2 {
+    margin: 0;
+    font-size: 22px;
+  }
+
+.coach-team-details__panel {
+  margin-top: 24px;
+  padding: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: #fff;
+}
+
+  .coach-team-details__panel h2 {
+    margin: 0 0 24px;
+    font-size: 20px;
+  }
+
+.coach-team-details__fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+  .coach-team-details__fields label {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    min-width: 0;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .coach-team-details__fields input {
+    width: 100%;
+    min-height: 46px;
+    padding: 10px 14px;
+    border: 1px solid var(--color-border);
+    border-radius: 9px;
+    background: #fff;
+    color: var(--color-text);
+    font-size: 13px;
+    font-weight: 400;
+  }
+
+    .coach-team-details__fields input:focus {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 1px;
+    }
+
+    .coach-team-details__fields input:disabled {
+      opacity: 0.6;
+    }
+
+.coach-team-details__actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+.coach-team-details__table-wrapper {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+}
+
+.coach-team-details__table {
+  width: 100%;
+  min-width: 660px;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+  .coach-team-details__table th {
+    padding: 17px 20px;
+    background: #f7f8fc;
+    color: var(--color-muted);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .coach-team-details__table td {
+    padding: 16px 20px;
+    border-top: 1px solid var(--color-border);
+    font-size: 13px;
+  }
+
+.coach-team-details__row-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+  .coach-team-details__row-actions .btn {
+    min-height: 36px;
+    padding: 7px 12px;
+    font-size: 12px;
+  }
+
+.coach-team-details__delete {
+  min-height: 36px;
+  padding: 7px 12px;
+  border: 1px solid #e3b4ba;
+  border-radius: 9px;
+  background: #fff;
+  color: #b42336;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+  .coach-team-details__delete:hover:not(:disabled) {
+    background: #fff1f2;
+  }
+
+  .coach-team-details__delete:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+.coach-team-details__message {
+  margin-top: 24px;
+  padding: 36px 24px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  color: var(--color-muted);
+  text-align: center;
+  font-size: 14px;
+}
+
+.coach-team-details__error {
+  margin: 18px 0;
+  color: #b42336;
+  font-size: 13px;
+}
+
+.coach-team-details__success {
+  margin: 24px 0;
+  padding: 14px 18px;
+  border: 1px solid #b7dfc5;
+  border-radius: 10px;
+  background: #effaf2;
+  color: #22703a;
+  font-size: 13px;
+}
+
+.coach-team-card__open {
+  display: inline-block;
+  margin-top: 20px;
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+  .coach-team-card__open:hover {
+    text-decoration: underline;
+  }
+
+@media (max-width: 700px) {
+  .coach-team-details__heading h1 {
+    font-size: 28px;
+  }
+
+  .coach-team-details__fields {
+    grid-template-columns: 1fr;
+  }
+
+  .coach-team-details__panel {
+    padding: 20px;
+  }
+}

@@ -38,3 +38,22 @@ export async function createTeam(
     body: JSON.stringify(data),
   })
 }
+
+
+// Обновление данных команды
+export async function updateTeam(
+  teamId: number,
+  data: CreateTeamRequest,
+): Promise<Team> {
+  return apiRequest<Team>(
+    `${API_URL}/${teamId}`,
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    },
+  )
+}
+
