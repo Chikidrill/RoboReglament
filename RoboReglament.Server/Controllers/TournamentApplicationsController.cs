@@ -13,8 +13,8 @@ using RoboReglament.Server.Models.Identity;
 namespace RoboReglament.Server.Controllers;
 
 [ApiController]
-[Route("api/tournaments/{tournamentId:int}/applications")]
 [Authorize]
+[Route("api/tournaments/{tournamentId:int}/applications")]
 public class TournamentApplicationsController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
@@ -28,36 +28,25 @@ public class TournamentApplicationsController : ControllerBase
         _userManager = userManager;
     }
 
-    // POST: подать заявку
+    // Создание черновика или отправленной заявки.
     [HttpPost]
     [Authorize(Roles = UserRoles.Coach)]
     public async Task<IActionResult> Create(
         int tournamentId,
-        [FromBody] CreateTournamentApplicationRequest request)
+        CreateTournamentApplicationRequest request)
     {
         var userId = _userManager.GetUserId(User);
 
         if (userId is null)
             return Unauthorized();
 
-        var tournament = await _context.Tournaments
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == tournamentId);
+        var tournament = await FindTournamentAsync(tournamentId);
 
         if (tournament is null)
             return NotFound(new { message = "Турнир не найден." });
 
-        if (tournament.Status != TournamentStatus.Registration)
-            return Conflict(new { message = "Регистрация не открыта." });
-
-        if (tournament.RegistrationDeadline.HasValue &&
-            DateTime.UtcNow > tournament.RegistrationDeadline.Value)
-        {
-            return Conflict(new
-            {
-                message = "Срок подачи заявок истёк."
-            });
-        }
+        if (!RegistrationOpen(tournament))
+            return RegistrationClosed();
 
         var team = await _context.Teams
             .AsNoTracking()
@@ -66,24 +55,25 @@ public class TournamentApplicationsController : ControllerBase
         if (team is null)
             return NotFound(new { message = "Команда не найдена." });
 
-        if (!await IsTeamCoachAsync(request.TeamId, userId))
+        if (!await IsTeamCoachAsync(team.Id, userId))
             return Forbid();
 
         var exists = await _context.TournamentApplications
             .AnyAsync(x =>
-                x.TournamentId == tournamentId &&
-                x.TeamId == request.TeamId);
+                x.TeamId == team.Id &&
+                x.TournamentId == tournamentId);
 
         if (exists)
-            return Conflict(new { message = "Заявка уже существует." });
+        {
+            return Conflict(new
+            {
+                message = "Заявка команды уже существует."
+            });
+        }
 
-        var participants = await _context.Participants
-            .AsNoTracking()
-            .Include(x => x.User)
-            .Where(x => x.TeamId == request.TeamId)
-            .ToListAsync();
+        var participants = await GetTeamParticipantsAsync(team.Id);
 
-        if (participants.Count == 0)
+        if (!request.SaveAsDraft && participants.Count == 0)
         {
             return BadRequest(new
             {
@@ -94,9 +84,16 @@ public class TournamentApplicationsController : ControllerBase
         var application = new TournamentApplication
         {
             TournamentId = tournamentId,
-            TeamId = request.TeamId,
-            Status = ApplicationStatus.Pending,
-            SubmittedAt = DateTime.UtcNow,
+            TeamId = team.Id,
+
+            Status = request.SaveAsDraft
+                ? ApplicationStatus.Draft
+                : ApplicationStatus.Pending,
+
+            SubmittedAt = request.SaveAsDraft
+                ? null
+                : DateTime.UtcNow,
+
             DeclaredParticipants = CreateSnapshots(participants)
         };
 
@@ -107,22 +104,66 @@ public class TournamentApplicationsController : ControllerBase
             await _context.SaveChangesAsync();
         }
         catch (DbUpdateException ex)
-            when (ex.InnerException is SqlException sql &&
-                  (sql.Number == 2601 || sql.Number == 2627))
+            when (IsDuplicate(ex))
         {
             return Conflict(new
             {
-                message = "Команда уже зарегистрирована на турнир."
+                message = "Заявка команды уже существует."
             });
         }
 
         return CreatedAtAction(
             nameof(GetById),
-            new { tournamentId, applicationId = application.Id },
+            new
+            {
+                tournamentId,
+                applicationId = application.Id
+            },
             ToResponse(application, team.Name));
     }
 
-    // GET: список доступных заявок
+    // Все собственные заявки тренера.
+    // Можно дополнительно отфильтровать по турниру.
+    [HttpGet("~/api/applications/mine")]
+    [Authorize(Roles = UserRoles.Coach)]
+    public async Task<IActionResult> GetMine(
+        [FromQuery] int? tournamentId = null)
+    {
+        var userId = _userManager.GetUserId(User);
+
+        if (userId is null)
+            return Unauthorized();
+
+        var query = _context.TournamentApplications
+            .AsNoTracking()
+            .Where(x => x.Team.Coaches.Any(c =>
+                c.UserId == userId));
+
+        if (tournamentId.HasValue)
+        {
+            query = query.Where(x =>
+                x.TournamentId == tournamentId.Value);
+        }
+
+        var applications = await query
+            .Include(x => x.Team)
+            .Include(x => x.Tournament)
+            .Include(x => x.DeclaredParticipants)
+            .Include(x => x.Accreditation)
+            .OrderByDescending(x => x.Id)
+            .ToListAsync();
+
+        return Ok(applications.Select(x => new
+        {
+            TournamentName = x.Tournament.Name,
+            TournamentStatus = x.Tournament.Status.ToString(),
+            x.Tournament.RegistrationDeadline,
+            Application = ToResponse(x, x.Team.Name)
+        }));
+    }
+
+    // Список заявок турнира.
+    // Черновики не показываются организатору.
     [HttpGet]
     public async Task<IActionResult> GetAll(int tournamentId)
     {
@@ -131,30 +172,45 @@ public class TournamentApplicationsController : ControllerBase
         if (userId is null)
             return Unauthorized();
 
-        var exists = await _context.Tournaments
-            .AnyAsync(x => x.Id == tournamentId);
-
-        if (!exists)
+        if (!await _context.Tournaments
+                .AnyAsync(x => x.Id == tournamentId))
+        {
             return NotFound(new { message = "Турнир не найден." });
+        }
 
         var canViewAll = await CanViewAllAsync(tournamentId, userId);
 
         if (!canViewAll && !User.IsInRole(UserRoles.Coach))
             return Forbid();
 
-        var applications = await AccessibleApplications(
-                tournamentId, userId, canViewAll)
+        var query = _context.TournamentApplications
+            .AsNoTracking()
+            .Where(x => x.TournamentId == tournamentId);
+
+        if (canViewAll)
+        {
+            query = query.Where(x =>
+                x.Status != ApplicationStatus.Draft);
+        }
+        else
+        {
+            query = query.Where(x =>
+                x.Team.Coaches.Any(c => c.UserId == userId));
+        }
+
+        var applications = await query
             .Include(x => x.Team)
             .Include(x => x.DeclaredParticipants)
             .Include(x => x.Accreditation)
             .OrderByDescending(x => x.SubmittedAt)
+            .ThenByDescending(x => x.Id)
             .ToListAsync();
 
         return Ok(applications.Select(x =>
-            ToResponse(x, x.Team.Name)).ToList());
+            ToResponse(x, x.Team.Name)));
     }
 
-    // GET: конкретная заявка
+    // Получение конкретной заявки.
     [HttpGet("{applicationId:int}")]
     public async Task<IActionResult> GetById(
         int tournamentId,
@@ -166,16 +222,25 @@ public class TournamentApplicationsController : ControllerBase
             return Unauthorized();
 
         var canViewAll = await CanViewAllAsync(tournamentId, userId);
+        var isCoach = User.IsInRole(UserRoles.Coach);
 
-        if (!canViewAll && !User.IsInRole(UserRoles.Coach))
+        if (!canViewAll && !isCoach)
             return Forbid();
 
-        var application = await AccessibleApplications(
-                tournamentId, userId, canViewAll)
+        var application = await _context.TournamentApplications
+            .AsNoTracking()
             .Include(x => x.Team)
             .Include(x => x.DeclaredParticipants)
             .Include(x => x.Accreditation)
-            .FirstOrDefaultAsync(x => x.Id == applicationId);
+            .FirstOrDefaultAsync(x =>
+                x.Id == applicationId &&
+                x.TournamentId == tournamentId &&
+                (
+                    (canViewAll &&
+                     x.Status != ApplicationStatus.Draft) ||
+                    (isCoach &&
+                     x.Team.Coaches.Any(c => c.UserId == userId))
+                ));
 
         if (application is null)
             return NotFound(new { message = "Заявка не найдена." });
@@ -183,22 +248,259 @@ public class TournamentApplicationsController : ControllerBase
         return Ok(ToResponse(application, application.Team.Name));
     }
 
-    // PUT: одобрить или отклонить заявку
-    [HttpPut("{applicationId:int}/status")]
-    [Authorize(Roles = UserRoles.Organizer)]
-    public async Task<IActionResult> UpdateStatus(
+    // Отправка черновика или повторная отправка
+    // отозванной заявки.
+    [HttpPost("{applicationId:int}/submit")]
+    [Authorize(Roles = UserRoles.Coach)]
+    public Task<IActionResult> Submit(
+        int tournamentId,
+        int applicationId)
+    {
+        return UpdateRosterAsync(
+            tournamentId,
+            applicationId,
+            submit: true);
+    }
+
+    // Обновление снимка состава команды.
+    [HttpPut("{applicationId:int}/participants/refresh")]
+    [Authorize(Roles = UserRoles.Coach)]
+    public Task<IActionResult> RefreshParticipants(
+        int tournamentId,
+        int applicationId)
+    {
+        return UpdateRosterAsync(
+            tournamentId,
+            applicationId,
+            submit: false);
+    }
+
+    private async Task<IActionResult> UpdateRosterAsync(
         int tournamentId,
         int applicationId,
-        [FromBody] UpdateApplicationStatusRequest request)
+        bool submit)
     {
         var userId = _userManager.GetUserId(User);
 
         if (userId is null)
             return Unauthorized();
 
-        var tournament = await _context.Tournaments
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == tournamentId);
+        var tournament = await FindTournamentAsync(tournamentId);
+
+        if (tournament is null)
+            return NotFound(new { message = "Турнир не найден." });
+
+        if (!RegistrationOpen(tournament))
+            return RegistrationClosed();
+
+        var application = await FindTrackedApplicationAsync(
+            tournamentId, applicationId);
+
+        if (application is null)
+            return NotFound(new { message = "Заявка не найдена." });
+
+        if (!await IsTeamCoachAsync(application.TeamId, userId))
+            return Forbid();
+
+        if (application.Accreditation?.IsAccredited == true)
+            return AccreditedConflict();
+
+        if (submit &&
+            application.Status != ApplicationStatus.Draft &&
+            application.Status != ApplicationStatus.Withdrawn)
+        {
+            return Conflict(new
+            {
+                message = "Заявка уже отправлена."
+            });
+        }
+
+        if (!submit &&
+            application.Status == ApplicationStatus.Withdrawn)
+        {
+            return Conflict(new
+            {
+                message = "Сначала отправьте отозванную заявку повторно."
+            });
+        }
+
+        var participants = await GetTeamParticipantsAsync(
+            application.TeamId);
+
+        var remainsDraft =
+            !submit && application.Status == ApplicationStatus.Draft;
+
+        if (!remainsDraft && participants.Count == 0)
+        {
+            return BadRequest(new
+            {
+                message = "Нельзя отправить заявку с пустым составом."
+            });
+        }
+
+        try
+        {
+            await using var transaction =
+                await _context.Database.BeginTransactionAsync();
+
+            application.Status = remainsDraft
+                ? ApplicationStatus.Draft
+                : ApplicationStatus.Pending;
+
+            if (submit)
+                application.SubmittedAt = DateTime.UtcNow;
+
+            application.Comment = null;
+
+            // Принудительно обновляем строку заявки, даже если
+            // её статус не изменился. Это проверяет RowVersion.
+            _context.Entry(application)
+                .Property(x => x.Status)
+                .IsModified = true;
+
+            await _context.SaveChangesAsync();
+
+            await _context.TournamentApplicationParticipants
+                .Where(x =>
+                    x.TournamentApplicationId == application.Id)
+                .ExecuteDeleteAsync();
+
+            application.DeclaredParticipants =
+                CreateSnapshots(participants);
+
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+
+            return Ok(ToResponse(
+                application,
+                application.Team.Name));
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return ConcurrentChange();
+        }
+    }
+
+    // Отзыв отправленной заявки.
+    [HttpPost("{applicationId:int}/withdraw")]
+    [Authorize(Roles = UserRoles.Coach)]
+    public async Task<IActionResult> Withdraw(
+        int tournamentId,
+        int applicationId)
+    {
+        var userId = _userManager.GetUserId(User);
+
+        if (userId is null)
+            return Unauthorized();
+
+        var tournament = await FindTournamentAsync(tournamentId);
+
+        if (tournament is null)
+            return NotFound(new { message = "Турнир не найден." });
+
+        if (!RegistrationOpen(tournament))
+            return RegistrationClosed();
+
+        var application = await FindTrackedApplicationAsync(
+            tournamentId, applicationId);
+
+        if (application is null)
+            return NotFound(new { message = "Заявка не найдена." });
+
+        if (!await IsTeamCoachAsync(application.TeamId, userId))
+            return Forbid();
+
+        if (application.Accreditation?.IsAccredited == true)
+            return AccreditedConflict();
+
+        if (application.Status != ApplicationStatus.Pending &&
+            application.Status != ApplicationStatus.Approved)
+        {
+            return Conflict(new
+            {
+                message = "Заявку нельзя отозвать в текущем статусе."
+            });
+        }
+
+        await _context.Entry(application)
+            .Collection(x => x.DeclaredParticipants)
+            .LoadAsync();
+
+        application.Status = ApplicationStatus.Withdrawn;
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return ConcurrentChange();
+        }
+
+        return Ok(ToResponse(
+            application,
+            application.Team.Name));
+    }
+
+    // Удаление черновика.
+    // Отправленные заявки физически не удаляются.
+    [HttpDelete("{applicationId:int}")]
+    [Authorize(Roles = UserRoles.Coach)]
+    public async Task<IActionResult> DeleteDraft(
+        int tournamentId,
+        int applicationId)
+    {
+        var userId = _userManager.GetUserId(User);
+
+        if (userId is null)
+            return Unauthorized();
+
+        var application = await FindTrackedApplicationAsync(
+            tournamentId, applicationId);
+
+        if (application is null)
+            return NotFound(new { message = "Заявка не найдена." });
+
+        if (!await IsTeamCoachAsync(application.TeamId, userId))
+            return Forbid();
+
+        if (application.Status != ApplicationStatus.Draft ||
+            application.Accreditation?.IsAccredited == true)
+        {
+            return Conflict(new
+            {
+                message = "Удалить можно только черновик."
+            });
+        }
+
+        _context.TournamentApplications.Remove(application);
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return ConcurrentChange();
+        }
+
+        return NoContent();
+    }
+
+    // Рассмотрение заявки организатором.
+    [HttpPut("{applicationId:int}/status")]
+    [Authorize(Roles = UserRoles.Organizer)]
+    public async Task<IActionResult> UpdateStatus(
+        int tournamentId,
+        int applicationId,
+        UpdateApplicationStatusRequest request)
+    {
+        var userId = _userManager.GetUserId(User);
+
+        if (userId is null)
+            return Unauthorized();
+
+        var tournament = await FindTournamentAsync(tournamentId);
 
         if (tournament is null)
             return NotFound(new { message = "Турнир не найден." });
@@ -236,140 +538,58 @@ public class TournamentApplicationsController : ControllerBase
             });
         }
 
-        var exists = await _context.TournamentApplications
-            .AnyAsync(x =>
-                x.Id == applicationId &&
-                x.TournamentId == tournamentId);
+        var application = await FindTrackedApplicationAsync(
+            tournamentId, applicationId);
 
-        if (!exists)
+        if (application is null ||
+            application.Status == ApplicationStatus.Draft)
+        {
             return NotFound(new { message = "Заявка не найдена." });
+        }
 
-        // Обновляем только заявку со статусом Pending.
-        var updated = await _context.TournamentApplications
-            .Where(x =>
-                x.Id == applicationId &&
-                x.TournamentId == tournamentId &&
-                x.Status == ApplicationStatus.Pending)
-            .ExecuteUpdateAsync(setters => setters
-                .SetProperty(x => x.Status, request.Status)
-                .SetProperty(x => x.Comment, comment));
-
-        if (updated == 0)
+        if (application.Status != ApplicationStatus.Pending)
         {
             return Conflict(new
             {
-                message = "Заявка уже рассмотрена."
+                message = "Заявка уже рассмотрена или отозвана."
             });
         }
 
-        var application = await _context.TournamentApplications
-            .AsNoTracking()
-            .Include(x => x.Team)
-            .Include(x => x.DeclaredParticipants)
-            .Include(x => x.Accreditation)
-            .FirstAsync(x => x.Id == applicationId);
+        await _context.Entry(application)
+            .Collection(x => x.DeclaredParticipants)
+            .LoadAsync();
 
-        return Ok(ToResponse(application, application.Team.Name));
+        application.Status = request.Status;
+        application.Comment = comment;
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return ConcurrentChange();
+        }
+
+        return Ok(ToResponse(
+            application,
+            application.Team.Name));
     }
 
-    // PUT: обновить заявленный состав из текущего состава команды
-    [HttpPut("{applicationId:int}/participants/refresh")]
-    [Authorize(Roles = UserRoles.Coach)]
-    public async Task<IActionResult> RefreshParticipants(
-        int tournamentId,
-        int applicationId)
-    {
-        var userId = _userManager.GetUserId(User);
-
-        if (userId is null)
-            return Unauthorized();
-
-        var tournament = await _context.Tournaments
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == tournamentId);
-
-        if (tournament is null)
-            return NotFound(new { message = "Турнир не найден." });
-
-        if (tournament.Status != TournamentStatus.Registration)
-        {
-            return Conflict(new
-            {
-                message = "Изменение состава доступно " +
-                          "только на этапе регистрации."
-            });
-        }
-
-        var application = await _context.TournamentApplications
-            .Include(x => x.Team)
-            .Include(x => x.Accreditation)
-            .FirstOrDefaultAsync(x =>
-                x.Id == applicationId &&
-                x.TournamentId == tournamentId);
-
-        if (application is null)
-            return NotFound(new { message = "Заявка не найдена." });
-
-        if (!await IsTeamCoachAsync(application.TeamId, userId))
-            return Forbid();
-
-        if (application.Accreditation?.IsAccredited == true)
-        {
-            return Conflict(new
-            {
-                message = "Команда уже аккредитована. Состав зафиксирован."
-            });
-        }
-
-        var participants = await _context.Participants
-            .AsNoTracking()
-            .Include(x => x.User)
-            .Where(x => x.TeamId == application.TeamId)
-            .ToListAsync();
-
-        if (participants.Count == 0)
-        {
-            return BadRequest(new
-            {
-                message = "Нельзя обновить заявку пустым составом."
-            });
-        }
-
-        // Удаление старых копий и сохранение новых
-        // выполняются в одной транзакции.
-        await using var transaction =
-            await _context.Database.BeginTransactionAsync();
-
-        await _context.TournamentApplicationParticipants
-            .Where(x => x.TournamentApplicationId == application.Id)
-            .ExecuteDeleteAsync();
-
-        application.DeclaredParticipants = CreateSnapshots(participants);
-        application.Status = ApplicationStatus.Pending;
-        application.Comment = null;
-
-        await _context.SaveChangesAsync();
-        await transaction.CommitAsync();
-
-        return Ok(ToResponse(application, application.Team.Name));
-    }
-
-    // POST: аккредитовать команду и зафиксировать состав
+    // Аккредитация команды.
     [HttpPost("{applicationId:int}/accreditation")]
     [Authorize(Roles = UserRoles.Organizer)]
     public async Task<IActionResult> Accredit(
         int tournamentId,
         int applicationId,
-        [FromBody] AccreditApplicationRequest request)
+        AccreditApplicationRequest request)
     {
         var userId = _userManager.GetUserId(User);
 
         if (userId is null)
             return Unauthorized();
 
-        var tournament = await _context.Tournaments
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == tournamentId);
+        var tournament = await FindTournamentAsync(tournamentId);
 
         if (tournament is null)
             return NotFound(new { message = "Турнир не найден." });
@@ -386,16 +606,14 @@ public class TournamentApplicationsController : ControllerBase
             });
         }
 
-        var application = await _context.TournamentApplications
-            .Include(x => x.Team)
-            .Include(x => x.DeclaredParticipants)
-            .Include(x => x.Accreditation)
-            .FirstOrDefaultAsync(x =>
-                x.Id == applicationId &&
-                x.TournamentId == tournamentId);
+        var application = await FindTrackedApplicationAsync(
+            tournamentId, applicationId);
 
-        if (application is null)
+        if (application is null ||
+            application.Status == ApplicationStatus.Draft)
+        {
             return NotFound(new { message = "Заявка не найдена." });
+        }
 
         if (application.Status != ApplicationStatus.Approved)
         {
@@ -406,12 +624,11 @@ public class TournamentApplicationsController : ControllerBase
         }
 
         if (application.Accreditation?.IsAccredited == true)
-        {
-            return Conflict(new
-            {
-                message = "Команда уже аккредитована."
-            });
-        }
+            return AccreditedConflict();
+
+        await _context.Entry(application)
+            .Collection(x => x.DeclaredParticipants)
+            .LoadAsync();
 
         if (application.DeclaredParticipants.Count == 0)
         {
@@ -429,71 +646,133 @@ public class TournamentApplicationsController : ControllerBase
         {
             application.Accreditation = new Accreditation
             {
-                ApplicationId = application.Id,
-                IsAccredited = true,
-                AccreditedAt = DateTime.UtcNow,
-                Comment = comment
+                ApplicationId = application.Id
             };
         }
-        else
+
+        application.Accreditation.IsAccredited = true;
+        application.Accreditation.AccreditedAt = DateTime.UtcNow;
+        application.Accreditation.Comment = comment;
+
+        // Аккредитация тоже должна изменить RowVersion заявки.
+        _context.Entry(application)
+            .Property(x => x.Status)
+            .IsModified = true;
+
+        try
         {
-            application.Accreditation.IsAccredited = true;
-            application.Accreditation.AccreditedAt = DateTime.UtcNow;
-            application.Accreditation.Comment = comment;
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return ConcurrentChange();
+        }
+        catch (DbUpdateException ex) when (IsDuplicate(ex))
+        {
+            return ConcurrentChange();
         }
 
-        await _context.SaveChangesAsync();
-
-        return Ok(ToResponse(application, application.Team.Name));
+        return Ok(ToResponse(
+            application,
+            application.Team.Name));
     }
 
-    // Вспомогательные методы
+    // Вспомогательные методы.
+
+    private Task<Tournament?> FindTournamentAsync(int tournamentId)
+    {
+        return _context.Tournaments
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == tournamentId);
+    }
+
+    private Task<TournamentApplication?> FindTrackedApplicationAsync(
+        int tournamentId,
+        int applicationId)
+    {
+        return _context.TournamentApplications
+            .Include(x => x.Team)
+            .Include(x => x.Accreditation)
+            .FirstOrDefaultAsync(x =>
+                x.Id == applicationId &&
+                x.TournamentId == tournamentId);
+    }
+
+    private Task<List<Participant>> GetTeamParticipantsAsync(
+        int teamId)
+    {
+        return _context.Participants
+            .AsNoTracking()
+            .Include(x => x.User)
+            .Where(x => x.TeamId == teamId)
+            .ToListAsync();
+    }
 
     private Task<bool> IsTeamCoachAsync(int teamId, string userId)
     {
         return _context.TeamCoaches.AnyAsync(x =>
-            x.TeamId == teamId && x.UserId == userId);
+            x.TeamId == teamId &&
+            x.UserId == userId);
     }
 
     private Task<bool> IsTournamentOrganizerAsync(
-        int tournamentId, string userId)
+        int tournamentId,
+        string userId)
     {
         return _context.TournamentOrganizers.AnyAsync(x =>
-            x.TournamentId == tournamentId && x.UserId == userId);
+            x.TournamentId == tournamentId &&
+            x.UserId == userId);
     }
 
     private async Task<bool> CanViewAllAsync(
-        int tournamentId, string userId)
+        int tournamentId,
+        string userId)
     {
         if (User.IsInRole(UserRoles.Administrator))
             return true;
 
-        if (!User.IsInRole(UserRoles.Organizer))
-            return false;
-
-        return await IsTournamentOrganizerAsync(tournamentId, userId);
+        return User.IsInRole(UserRoles.Organizer) &&
+            await IsTournamentOrganizerAsync(tournamentId, userId);
     }
 
-    private IQueryable<TournamentApplication> AccessibleApplications(
-        int tournamentId,
-        string userId,
-        bool canViewAll)
+    private static bool RegistrationOpen(Tournament tournament)
     {
-        var query = _context.TournamentApplications
-            .AsNoTracking()
-            .Where(x => x.TournamentId == tournamentId);
-
-        if (!canViewAll)
-        {
-            query = query.Where(x =>
-                _context.TeamCoaches.Any(coach =>
-                    coach.TeamId == x.TeamId &&
-                    coach.UserId == userId));
-        }
-
-        return query;
+        return tournament.Status == TournamentStatus.Registration &&
+            (
+                !tournament.RegistrationDeadline.HasValue ||
+                DateTime.UtcNow <= tournament.RegistrationDeadline.Value
+            );
     }
 
+    private static bool IsDuplicate(DbUpdateException exception)
+    {
+        return exception.InnerException is SqlException sql &&
+            (sql.Number == 2601 || sql.Number == 2627);
+    }
+
+    private IActionResult RegistrationClosed()
+    {
+        return Conflict(new
+        {
+            message = "Приём заявок закрыт."
+        });
+    }
+
+    private IActionResult AccreditedConflict()
+    {
+        return Conflict(new
+        {
+            message = "Команда уже аккредитована. Состав зафиксирован."
+        });
+    }
+
+    private IActionResult ConcurrentChange()
+    {
+        return Conflict(new
+        {
+            message = "Заявка была изменена. Обновите страницу."
+        });
+    }
 
     private static List<TournamentApplicationParticipant> CreateSnapshots(
         IEnumerable<Participant> participants)
@@ -502,16 +781,12 @@ public class TournamentApplicationsController : ControllerBase
             new TournamentApplicationParticipant
             {
                 ParticipantId = x.Id,
-
-                // Актуальные ФИО из зарегистрированного аккаунта.
                 FirstName = x.User.FirstName,
                 LastName = x.User.LastName,
                 MiddleName = x.User.MiddleName,
-
                 BirthDate = x.BirthDate
             }).ToList();
     }
-
 
     private static TournamentApplicationResponse ToResponse(
         TournamentApplication application,
@@ -523,14 +798,17 @@ public class TournamentApplicationsController : ControllerBase
             TournamentId = application.TournamentId,
             TeamId = application.TeamId,
             TeamName = teamName,
+
             Status = application.Status.ToString(),
             SubmittedAt = application.SubmittedAt,
             Comment = application.Comment,
 
             IsAccredited =
                 application.Accreditation?.IsAccredited ?? false,
+
             AccreditedAt =
                 application.Accreditation?.AccreditedAt,
+
             AccreditationComment =
                 application.Accreditation?.Comment,
 

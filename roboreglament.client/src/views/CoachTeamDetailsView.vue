@@ -1,9 +1,9 @@
 
 <script setup lang="ts">
   import { onUnmounted, ref, watch } from 'vue'
-  import { useRoute } from 'vue-router'
+  import { useRoute, useRouter } from 'vue-router'
 
-  import { getMyTeams, updateTeam } from '@/api/teams'
+  import { getMyTeams, updateTeam, deleteTeam } from '@/api/teams'
 
   import {
     getTeamParticipants,
@@ -19,7 +19,13 @@
     ParticipantLookupResponse,
   } from '@/types/participant'
 
+  import TeamCoachesPanel from '@/components/teams/TeamCoachesPanel.vue'
+
   const route = useRoute()
+  const router = useRouter()
+
+  const isDeletingTeam = ref(false)
+  const deleteTeamError = ref('')
 
   const team = ref<Team | null>(null)
   const participants = ref<TeamParticipant[]>([])
@@ -28,7 +34,6 @@
   const loadError = ref('')
   const successMessage = ref('')
 
-  // Редактирование команды
   const isEditingTeam = ref(false)
   const isSavingTeam = ref(false)
   const teamError = ref('')
@@ -388,7 +393,36 @@
     }
   }
 
-  // Реакция на переход между командами
+
+  async function handleDeleteTeam() {
+    if (!team.value || isDeletingTeam.value) return
+
+    const confirmed = window.confirm(
+      `Удалить команду «${team.value.name}»? ` +
+      'Это действие нельзя отменить.',
+    )
+
+    if (!confirmed) return
+
+    isDeletingTeam.value = true
+    deleteTeamError.value = ''
+
+    try {
+      await deleteTeam(team.value.id)
+
+      await router.push({
+        name: 'coach-teams',
+      })
+    } catch (error) {
+      deleteTeamError.value =
+        error instanceof Error
+          ? error.message
+          : 'Не удалось удалить команду.'
+    } finally {
+      isDeletingTeam.value = false
+    }
+  }
+
   watch(
     () => route.params.id,
     () => {
@@ -447,7 +481,24 @@
                 @click="startEditingTeam">
           Редактировать команду
         </button>
+
+
+        <button v-if="!isEditingTeam"
+                type="button"
+                class="coach-team-details__delete"
+                :disabled="isDeletingTeam"
+                @click="handleDeleteTeam">
+          {{ isDeletingTeam ? 'Удаление...' : 'Удалить команду' }}
+        </button>
+
+
       </header>
+
+      <p v-if="deleteTeamError"
+         class="coach-team-details__error"
+         role="alert">
+        {{ deleteTeamError }}
+      </p>
 
       <p v-if="successMessage"
          class="coach-team-details__success"
@@ -511,6 +562,9 @@
           </button>
         </div>
       </form>
+
+      <TeamCoachesPanel :key="team.id"
+                        :team-id="team.id" />
 
       <!-- Заголовок состава -->
       <div class="coach-team-details__section-heading">

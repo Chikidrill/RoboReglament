@@ -4,6 +4,8 @@ import { apiRequest } from '@/api/http'
 import type {
   Team,
   CreateTeamRequest,
+  TeamCoach,
+  TeamCoachLookup,
 } from '@/types/teams'
 
 const API_URL = '/api/teams'
@@ -57,3 +59,63 @@ export async function updateTeam(
   )
 }
 
+
+// Удаление команды
+export async function deleteTeam(
+  teamId: number,
+): Promise<void> {
+  await apiRequest<void>(`${API_URL}/${teamId}`, {
+    method: 'DELETE',
+  })
+}
+
+// Получение тренеров команды
+export async function getTeamCoaches(
+  teamId: number,
+  signal?: AbortSignal,
+): Promise<TeamCoach[]> {
+  return apiRequest<TeamCoach[]>(
+    `${API_URL}/${teamId}/coaches`,
+    { signal },
+  )
+}
+
+// Поиск тренера по публичному ID
+export async function lookupTeamCoach(
+  teamId: number,
+  publicId: number,
+): Promise<TeamCoachLookup> {
+  return apiRequest<TeamCoachLookup>(
+    `${API_URL}/${teamId}/coaches/lookup/${publicId}`,
+  )
+}
+
+// Добавление тренера
+export async function addTeamCoach(
+  teamId: number,
+  publicId: number,
+): Promise<void> {
+  await apiRequest<void>(
+    `${API_URL}/${teamId}/coaches`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ publicId }),
+    },
+  )
+}
+
+// Исключение тренера
+export async function removeTeamCoach(
+  teamId: number,
+  publicId: number,
+): Promise<void> {
+  await apiRequest<void>(
+    `${API_URL}/${teamId}/coaches/${publicId}`,
+    {
+      method: 'DELETE',
+    },
+  )
+}

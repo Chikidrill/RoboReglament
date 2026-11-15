@@ -4,32 +4,40 @@ import { apiRequest } from '@/api/http'
 import type {
   TournamentApplication,
   CreateApplicationRequest,
+  CoachApplicationItem,
 } from '@/types/application'
 
 function applicationsUrl(tournamentId: number): string {
   return `/api/tournaments/${tournamentId}/applications`
 }
 
-// Заявки на турнир, доступные текущему пользователю.
+// Общие заявки конкретного турнира.
 export async function getTournamentApplications(
   tournamentId: number,
   signal?: AbortSignal,
 ): Promise<TournamentApplication[]> {
-  const result = await apiRequest<unknown>(
+  return apiRequest<TournamentApplication[]>(
     applicationsUrl(tournamentId),
     { signal },
   )
-
-  if (!Array.isArray(result)) {
-    throw new Error(
-      'Сервер вернул некорректный список заявок.',
-    )
-  }
-
-  return result as TournamentApplication[]
 }
 
-// Подача заявки от команды тренера.
+// Собственные заявки тренера.
+export async function getMyApplications(
+  tournamentId?: number,
+  signal?: AbortSignal,
+): Promise<CoachApplicationItem[]> {
+  const query = tournamentId === undefined
+    ? ''
+    : `?tournamentId=${tournamentId}`
+
+  return apiRequest<CoachApplicationItem[]>(
+    `/api/applications/mine${query}`,
+    { signal },
+  )
+}
+
+// Создание заявки или черновика.
 export async function createTournamentApplication(
   tournamentId: number,
   data: CreateApplicationRequest,
@@ -46,15 +54,46 @@ export async function createTournamentApplication(
   )
 }
 
-// Обновление состава заявки из текущего состава команды.
+// Отправка черновика или отозванной заявки.
+export async function submitTournamentApplication(
+  tournamentId: number,
+  applicationId: number,
+): Promise<TournamentApplication> {
+  return apiRequest<TournamentApplication>(
+    `${applicationsUrl(tournamentId)}/${applicationId}/submit`,
+    { method: 'POST' },
+  )
+}
+
+// Отзыв заявки.
+export async function withdrawTournamentApplication(
+  tournamentId: number,
+  applicationId: number,
+): Promise<TournamentApplication> {
+  return apiRequest<TournamentApplication>(
+    `${applicationsUrl(tournamentId)}/${applicationId}/withdraw`,
+    { method: 'POST' },
+  )
+}
+
+// Удаление черновика.
+export async function deleteApplicationDraft(
+  tournamentId: number,
+  applicationId: number,
+): Promise<void> {
+  await apiRequest<void>(
+    `${applicationsUrl(tournamentId)}/${applicationId}`,
+    { method: 'DELETE' },
+  )
+}
+
+// Обновление заявленного состава.
 export async function refreshApplicationParticipants(
   tournamentId: number,
   applicationId: number,
 ): Promise<TournamentApplication> {
   return apiRequest<TournamentApplication>(
     `${applicationsUrl(tournamentId)}/${applicationId}/participants/refresh`,
-    {
-      method: 'PUT',
-    },
+    { method: 'PUT' },
   )
 }

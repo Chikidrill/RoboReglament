@@ -1,9 +1,11 @@
-﻿namespace RoboReglament.Server.Models
+﻿
+namespace RoboReglament.Server.Models;
+
+public enum ApplicationStatus
 {
-    public enum ApplicationStatus
-    {
-        Pending,
-        Approved,
-        Rejected
-    }
+    Pending = 0,
+    Approved = 1,
+    Rejected = 2,
+    Draft = 3,
+    Withdrawn = 4
 }

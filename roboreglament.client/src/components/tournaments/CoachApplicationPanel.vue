@@ -1,276 +1,203 @@
 
-<script setup lang="ts">import { computed, ref, watch } from 'vue'
+<script setup lang="ts">
+  import { computed, ref, watch } from 'vue'
 
-import { useAuthStore } from '@/stores/auth'
+  import { getMyTeams } from '@/api/teams'
 
-import { getMyTeams } from '@/api/teams'
+  import {
+    getMyApplications,
+    createTournamentApplication,
+  } from '@/api/applications'
 
-import {
-  getTournamentApplications,
-  createTournamentApplication,
-  refreshApplicationParticipants,
-} from '@/api/applications'
+  import { isRegistrationOpen } from '@/utils/application'
 
-import type { Team } from '@/types/teams'
-import type { Tournament } from '@/types/tournament'
+  import CoachApplicationCard
+    from '@/components/tournaments/CoachApplicationCard.vue'
 
-import type {
-  TournamentApplication,
-  ApplicationStatus,
-} from '@/types/application'
+  import type { Team } from '@/types/teams'
+  import type { Tournament } from '@/types/tournament'
+  import type { TournamentApplication } from '@/types/application'
 
-const props = defineProps<{
-  tournament: Tournament
-}>()
+  const props = defineProps<{
+    tournament: Tournament
+  }>()
 
-const authStore = useAuthStore()
+  const teams = ref<Team[]>([])
+  const applications = ref<TournamentApplication[]>([])
 
-const teams = ref<Team[]>([])
-const applications = ref<TournamentApplication[]>([])
+  const selectedTeamId = ref(0)
 
-const isLoading = ref(true)
-const isSubmitting = ref(false)
-const updatingApplicationId = ref<number | null>(null)
+  const isLoading = ref(true)
+  const isCreating = ref(false)
 
-const selectedTeamId = ref(0)
+  const loadError = ref('')
+  const actionError = ref('')
+  const successMessage = ref('')
+  const reloadCount = ref(0)
 
-const loadError = ref('')
-const actionError = ref('')
-const successMessage = ref('')
-
-const registrationOpen = computed(() => {
-  if (props.tournament.status !== 'Registration') {
-    return false
-  }
-
-  const deadline = props.tournament.registrationDeadline
-
-  if (!deadline) {
-    return true
-  }
-
-  const deadlineMs = Date.parse(deadline)
-
-  return Number.isFinite(deadlineMs) &&
-    Date.now() <= deadlineMs
-})
-
-// Команды, для которых заявка ещё не создана.
-const availableTeams = computed(() =>
-  teams.value.filter(team =>
-    !applications.value.some(
-      application => application.teamId === team.id,
+  const registrationOpen = computed(() =>
+    isRegistrationOpen(
+      props.tournament.status,
+      props.tournament.registrationDeadline,
     ),
-  ),
-)
+  )
 
-// Подача заявки требует хотя бы одного участника.
-const selectedTeam = computed(() =>
-  availableTeams.value.find(
-    team => team.id === selectedTeamId.value,
-  ),
-)
-
-const canSubmit = computed(() =>
-  registrationOpen.value &&
-  (selectedTeam.value?.participantsCount ?? 0) > 0 &&
-  !isSubmitting.value,
-)
-
-function statusLabel(status: ApplicationStatus): string {
-  switch (status) {
-    case 'Pending':
-      return 'На рассмотрении'
-    case 'Approved':
-      return 'Одобрена'
-    case 'Rejected':
-      return 'Отклонена'
-  }
-}
-
-function formatDate(value: string): string {
-  return new Intl.DateTimeFormat('ru-RU', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(value))
-}
-
-function participantName(person: {
-  lastName: string
-  firstName: string
-  middleName: string | null
-}): string {
-  return [
-    person.lastName,
-    person.firstName,
-    person.middleName,
-  ].filter(Boolean).join(' ')
-}
-
-// Получение команд тренера и его заявок.
-async function loadData(signal: AbortSignal) {
-  isLoading.value = true
-  loadError.value = ''
-  actionError.value = ''
-  successMessage.value = ''
-
-  teams.value = []
-  applications.value = []
-  selectedTeamId.value = 0
-
-  try {
-    const [myTeams, myApplications] = await Promise.all([
-      getMyTeams(signal),
-      getTournamentApplications(
-        props.tournament.id,
-        signal,
-      ),
-    ])
-
-    if (signal.aborted) return
-
-    teams.value = myTeams
-    applications.value = myApplications
-
-    const firstAvailable = myTeams.find(
-      team => !myApplications.some(
+  const availableTeams = computed(() =>
+    teams.value.filter(team =>
+      !applications.value.some(
         application => application.teamId === team.id,
       ),
-    )
+    ),
+  )
 
-    selectedTeamId.value = firstAvailable?.id ?? 0
-  } catch (error) {
-    if (!signal.aborted) {
-      loadError.value =
-        error instanceof Error
-          ? error.message
-          : 'Не удалось получить заявки.'
-    }
-  } finally {
-    if (!signal.aborted) {
-      isLoading.value = false
+  const selectedTeam = computed(() =>
+    availableTeams.value.find(
+      team => team.id === selectedTeamId.value,
+    ),
+  )
+
+  const canSaveDraft = computed(() =>
+    registrationOpen.value &&
+    selectedTeam.value !== undefined &&
+    !isCreating.value,
+  )
+
+  const canSubmit = computed(() =>
+    canSaveDraft.value &&
+    (selectedTeam.value?.participantsCount ?? 0) > 0,
+  )
+
+  function selectAvailableTeam() {
+    if (!availableTeams.value.some(
+      team => team.id === selectedTeamId.value,
+    )) {
+      selectedTeamId.value =
+        availableTeams.value[0]?.id ?? 0
     }
   }
-}
 
-// Перезагружаем данные при смене турнира
-// или авторизованного пользователя.
-watch(
-  [
-    () => props.tournament.id,
-    () => authStore.isInitialized,
-    () => authStore.user?.id,
-    () => authStore.user?.roles.join(','),
-  ],
-  (_values, _oldValues, onCleanup) => {
-    const isCoach = authStore.user?.roles.includes('Coach')
+  async function loadData(
+    tournamentId: number,
+    signal: AbortSignal,
+  ) {
+    isLoading.value = true
+    loadError.value = ''
+    actionError.value = ''
+    successMessage.value = ''
 
-    if (!authStore.isInitialized || !isCoach) {
-      isLoading.value = false
+    try {
+      const [myTeams, items] = await Promise.all([
+        getMyTeams(signal),
+        getMyApplications(tournamentId, signal),
+      ])
+
+      if (signal.aborted) return
+
+      teams.value = myTeams
+      applications.value = items.map(item => item.application)
+
+      selectAvailableTeam()
+    } catch (err) {
+      if (!signal.aborted) {
+        loadError.value = err instanceof Error
+          ? err.message
+          : 'Не удалось загрузить заявки.'
+      }
+    } finally {
+      if (!signal.aborted) {
+        isLoading.value = false
+      }
+    }
+  }
+
+  async function createApplication(saveAsDraft: boolean) {
+    if (saveAsDraft ? !canSaveDraft.value : !canSubmit.value) {
       return
     }
 
-    const controller = new AbortController()
+    if (!saveAsDraft &&
+      !window.confirm('Подать заявку на участие в турнире?')) {
+      return
+    }
 
-    onCleanup(() => controller.abort())
+    isCreating.value = true
+    actionError.value = ''
+    successMessage.value = ''
 
-    void loadData(controller.signal)
-  },
-  { immediate: true },
-)
+    const tournamentId = props.tournament.id
 
-// Подача новой заявки.
-async function submitApplication() {
-  if (!canSubmit.value) return
+    try {
+      const created = await createTournamentApplication(
+        tournamentId,
+        {
+          teamId: selectedTeamId.value,
+          saveAsDraft,
+        },
+      )
 
-  isSubmitting.value = true
-  actionError.value = ''
-  successMessage.value = ''
+      applications.value.unshift(created)
+      selectAvailableTeam()
 
-  try {
-    const created = await createTournamentApplication(
-      props.tournament.id,
-      {
-        teamId: selectedTeamId.value,
-      },
-    )
-
-    applications.value.unshift(created)
-
-    // Убираем команду из доступных для подачи.
-    selectedTeamId.value =
-      availableTeams.value[0]?.id ?? 0
-
-    successMessage.value =
-      `Заявка команды «${created.teamName}» подана.`
-  } catch (error) {
-    actionError.value =
-      error instanceof Error
-        ? error.message
-        : 'Не удалось подать заявку.'
-  } finally {
-    isSubmitting.value = false
-  }
-}
-
-// Синхронизация заявки с текущим составом команды.
-async function refreshParticipants(
-  application: TournamentApplication,
-) {
-  if (
-    updatingApplicationId.value !== null ||
-    application.isAccredited ||
-    !registrationOpen.value
-  ) {
-    return
+      successMessage.value = saveAsDraft
+        ? 'Черновик заявки сохранён.'
+        : 'Заявка успешно отправлена.'
+    } catch (err) {
+      actionError.value = err instanceof Error
+        ? err.message
+        : 'Не удалось создать заявку.'
+    } finally {
+      isCreating.value = false
+    }
   }
 
-  const confirmed = window.confirm(
-    'Обновить заявленный состав из текущего состава ' +
-    'команды? Заявка снова получит статус ' +
-    '«На рассмотрении».',
-  )
-
-  if (!confirmed) return
-
-  updatingApplicationId.value = application.id
-  actionError.value = ''
-  successMessage.value = ''
-
-  try {
-    const updated = await refreshApplicationParticipants(
-      props.tournament.id,
-      application.id,
-    )
-
+  function replaceApplication(updated: TournamentApplication) {
     applications.value = applications.value.map(
       item => item.id === updated.id ? updated : item,
     )
-
-    successMessage.value =
-      `Состав заявки команды «${updated.teamName}» обновлён.`
-  } catch (error) {
-    actionError.value =
-      error instanceof Error
-        ? error.message
-        : 'Не удалось обновить состав заявки.'
-  } finally {
-    updatingApplicationId.value = null
   }
-}</script>
+
+  function removeApplication(applicationId: number) {
+    applications.value = applications.value.filter(
+      item => item.id !== applicationId,
+    )
+
+    successMessage.value = 'Черновик удалён.'
+
+    selectAvailableTeam()
+  }
+
+  watch(
+    [
+      () => props.tournament.id,
+      reloadCount,
+    ],
+    ([tournamentId], _oldValues, onCleanup) => {
+      const controller = new AbortController()
+
+      onCleanup(() => controller.abort())
+
+      void loadData(tournamentId, controller.signal)
+    },
+    { immediate: true },
+  )
+</script>
 
 <template>
   <div class="coach-applications">
-    <div v-if="isLoading"
-         class="coach-applications__message"
-         role="status">
+    <p v-if="isLoading"
+       class="coach-applications__message">
       Загрузка заявок...
-    </div>
+    </p>
 
     <div v-else-if="loadError"
-         class="coach-applications__message"
-         role="alert">
-      {{ loadError }}
+         class="coach-applications__message">
+      <p role="alert">{{ loadError }}</p>
+
+      <button type="button"
+              class="btn btn-outline"
+              @click="reloadCount++">
+        Повторить
+      </button>
     </div>
 
     <template v-else>
@@ -286,17 +213,16 @@ async function refreshParticipants(
         {{ actionError }}
       </p>
 
-      <!-- Новая заявка -->
       <form v-if="registrationOpen && availableTeams.length > 0"
             class="coach-applications__form"
-            @submit.prevent="submitApplication">
+            @submit.prevent="createApplication(false)">
         <label for="application-team">
           Выберите команду
         </label>
 
         <select id="application-team"
                 v-model.number="selectedTeamId"
-                :disabled="isSubmitting">
+                :disabled="isCreating">
           <option :value="0">
             Выберите команду
           </option>
@@ -308,114 +234,63 @@ async function refreshParticipants(
           </option>
         </select>
 
-        <p v-if="selectedTeam && selectedTeam.participantsCount === 0"
+        <p v-if="selectedTeam?.participantsCount === 0"
            class="coach-applications__notice">
-          В выбранной команде нет участников.
-          Сначала добавьте их в состав.
+          В команде нет участников. Сейчас можно
+          сохранить только черновик.
         </p>
 
         <button type="submit"
-                class="btn btn-primary tournament-details__button"
+                class="btn btn-primary"
                 :disabled="!canSubmit">
-          {{
-            isSubmitting
-              ? 'Подача заявки...'
-              : 'Подать заявку'
-          }}
+          Подать заявку
+        </button>
+
+        <button type="button"
+                class="btn btn-outline"
+                :disabled="!canSaveDraft"
+                @click="createApplication(true)">
+          Сохранить черновик
         </button>
       </form>
 
       <p v-else-if="!registrationOpen"
          class="coach-applications__notice">
-        Приём заявок на этот турнир сейчас закрыт.
+        Приём заявок закрыт.
       </p>
 
       <p v-else-if="teams.length === 0"
          class="coach-applications__notice">
-        У вас пока нет команд.
-        Создайте команду в кабинете тренера.
+        Сначала создайте команду.
       </p>
 
-      <p v-else-if="availableTeams.length === 0"
+      <p v-else
          class="coach-applications__notice">
-        Для всех ваших команд заявки уже созданы.
+        Для всех ваших команд уже созданы заявки.
       </p>
 
       <RouterLink v-if="teams.length === 0"
                   :to="{ name: 'coach-teams' }"
                   class="coach-applications__link">
-        Перейти к моим командам
+        Мои команды
       </RouterLink>
 
-      <!-- Поданные заявки -->
       <div v-if="applications.length > 0"
            class="coach-applications__list">
-        <h3>Мои заявки</h3>
+        <h3>Мои заявки на турнир</h3>
 
-        <article v-for="application in applications"
-                 :key="application.id"
-                 class="coach-applications__item">
-          <div class="coach-applications__item-heading">
-            <strong>{{ application.teamName }}</strong>
-            <span class="coach-applications__status"
-                  :class="`coach-applications__status--${application.status.toLowerCase()}`">
-              {{
-                application.isAccredited
-                  ? 'Аккредитована'
-                  : statusLabel(application.status)
-              }}
-            </span>
-          </div>
-
-          <p>
-            Подана: {{ formatDate(application.submittedAt) }}
-          </p>
-
-          <p>
-            Заявлено участников:
-            {{ application.participants.length }}
-          </p>
-
-          <p v-if="application.comment"
-             class="coach-applications__comment">
-            Комментарий организатора:
-            {{ application.comment }}
-          </p>
-
-          <details class="coach-applications__participants">
-            <summary>
-              Посмотреть заявленный состав
-            </summary>
-
-            <ul>
-              <li v-for="person in application.participants"
-                  :key="person.id">
-                {{ participantName(person) }}
-              </li>
-            </ul>
-          </details>
-
-          <button v-if="
-              registrationOpen &&
-              !application.isAccredited
-            "
-                  type="button"
-                  class="btn btn-outline coach-applications__refresh"
-                  :disabled="updatingApplicationId !== null"
-                  @click="refreshParticipants(application)">
-            {{
-              updatingApplicationId === application.id
-                ? 'Обновление...'
-                : 'Обновить состав заявки'
-            }}
-          </button>
-
-          <p v-if="application.isAccredited"
-             class="coach-applications__notice">
-            Состав зафиксирован после аккредитации.
-          </p>
-        </article>
+        <CoachApplicationCard v-for="application in applications"
+                              :key="application.id"
+                              :application="application"
+                              :registration-open="registrationOpen"
+                              @updated="replaceApplication"
+                              @removed="removeApplication" />
       </div>
+
+      <RouterLink :to="{ name: 'coach-applications' }"
+                  class="coach-applications__all-link">
+        Все мои заявки →
+      </RouterLink>
     </template>
   </div>
 </template>

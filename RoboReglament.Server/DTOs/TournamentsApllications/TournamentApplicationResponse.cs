@@ -7,7 +7,7 @@ public class TournamentApplicationResponse
     public int TeamId { get; set; }
     public string TeamName { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
-    public DateTime SubmittedAt { get; set; }
+    public DateTime? SubmittedAt { get; set; }
     public string? Comment { get; set; }
 
     public bool IsAccredited { get; set; }

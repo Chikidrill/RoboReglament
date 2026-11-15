@@ -47,13 +47,15 @@
         dashboardStore.setRole('Administrator')
       } else if (
         path === '/account/teams' ||
-        path.startsWith('/account/teams/')
+        path.startsWith('/account/teams/') ||
+        path === '/account/applications'
       ) {
         dashboardStore.setRole('Coach')
       }
     },
     { immediate: true },
   )
+
 
 </script>
 
@@ -119,6 +121,15 @@
           <span aria-hidden="true">◦</span>
           Мои команды
         </RouterLink>
+
+        <RouterLink v-if="isCoachWorkspace"
+                    to="/account/applications"
+                    class="dashboard-sidebar__link"
+                    exact-active-class="dashboard-sidebar__link--active">
+          <span aria-hidden="true">▤</span>
+          Мои заявки
+        </RouterLink>
+
       </nav>
     </div>
   </aside>

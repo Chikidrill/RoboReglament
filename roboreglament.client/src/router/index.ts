@@ -17,7 +17,7 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import DashboardOverviewView from '@/views/DashboardOverviewView.vue'
 import CoachTeamView from '@/views/CoachTeamView.vue'
 import CoachTeamDetailsView from '@/views/CoachTeamDetailsView.vue'
-
+import CoachApplicationsView from '@/views/CoachApplicationsView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -115,6 +115,15 @@ const router = createRouter({
           path: 'teams/:id',
           name: 'coach-team-details',
           component: CoachTeamDetailsView,
+          meta: {
+            roles: ['Coach'],
+          },
+        },
+
+        {
+          path: 'applications',
+          name: 'coach-applications',
+          component: CoachApplicationsView,
           meta: {
             roles: ['Coach'],
           },

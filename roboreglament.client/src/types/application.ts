@@ -1,8 +1,12 @@
 
+import type { TournamentStatus } from '@/types/tournament'
+
 export type ApplicationStatus =
+  | 'Draft'
   | 'Pending'
   | 'Approved'
   | 'Rejected'
+  | 'Withdrawn'
 
 export interface ApplicationParticipant {
   id: number
@@ -18,16 +22,22 @@ export interface TournamentApplication {
   teamId: number
   teamName: string
   status: ApplicationStatus
-  submittedAt: string
+  submittedAt: string | null
   comment: string | null
-
   isAccredited: boolean
   accreditedAt: string | null
   accreditationComment: string | null
-
   participants: ApplicationParticipant[]
 }
 
 export interface CreateApplicationRequest {
   teamId: number
+  saveAsDraft?: boolean
+}
+
+export interface CoachApplicationItem {
+  tournamentName: string
+  tournamentStatus: TournamentStatus
+  registrationDeadline: string | null
+  application: TournamentApplication
 }
