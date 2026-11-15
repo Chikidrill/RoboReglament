@@ -3,6 +3,10 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
+import CoachApplicationPanel from '@/components/tournaments/CoachApplicationPanel.vue'
+
+import { useAuthStore } from '@/stores/auth'
+
 import { getTournamentById } from '@/api/tournaments'
 
 import type { Tournament } from '@/types/tournament'
@@ -14,6 +18,18 @@ import {
 } from '@/utils/tournament'
 
 const route = useRoute()
+
+
+const authStore = useAuthStore()
+
+if (!authStore.isInitialized) {
+  void authStore.initialize()
+}
+
+const isCoach = computed(() =>
+  authStore.user?.roles.includes('Coach') ?? false,
+)
+
 
 const tournament = ref<Tournament | null>(null)
 const isLoading = ref(true)
@@ -149,15 +165,30 @@ watch(
             </strong>
           </div>
 
-          <RouterLink v-if="canApply"
-                      to="/login"
+
+          <CoachApplicationPanel v-if="isCoach"
+                                 :tournament="tournament" />
+
+          <RouterLink v-else-if="canApply && !authStore.isAuthenticated"
+                      :to="{
+    name: 'login',
+    query: { redirect: route.fullPath },
+  }"
                       class="btn btn-primary tournament-details__button">
-            Войти, чтобы подать заявку →
+            Войти, чтобы подать заявку
           </RouterLink>
 
-          <p v-else class="tournament-details__notice">
+          <p v-else-if="canApply && authStore.isAuthenticated"
+             class="tournament-details__notice">
+            Подача заявок доступна пользователям
+            с ролью «Тренер».
+          </p>
+
+          <p v-else
+             class="tournament-details__notice">
             Подача заявок сейчас недоступна.
           </p>
+
         </aside>
       </div>
     </template>

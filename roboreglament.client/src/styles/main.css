@@ -18,6 +18,7 @@
 @import './pages/dashboard-overview.css';
 @import './pages/coach-teams.css';
 @import './pages/coach-team-details.css';
+@import './components/tournament-applications.css';
 
 .placeholder-page {
   padding-top: 56px;

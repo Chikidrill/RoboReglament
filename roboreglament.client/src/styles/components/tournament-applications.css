@@ -1,0 +1,153 @@
+
+.coach-applications {
+  width: 100%;
+  margin-top: 20px;
+}
+
+.coach-applications__form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+  .coach-applications__form label {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .coach-applications__form select {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 9px;
+    background: #ffffff;
+    color: var(--color-text);
+    font-size: 13px;
+  }
+
+    .coach-applications__form select:focus {
+      outline: 2px solid var(--color-primary);
+      outline-offset: 1px;
+    }
+
+.coach-applications__notice,
+.coach-applications__message {
+  margin: 16px 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.coach-applications__error {
+  margin: 16px 0;
+  color: #b42336;
+  font-size: 13px;
+}
+
+.coach-applications__success {
+  margin: 16px 0;
+  padding: 12px;
+  border-radius: 9px;
+  background: #effaf2;
+  color: #22703a;
+  font-size: 13px;
+}
+
+.coach-applications__link {
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.coach-applications__list {
+  margin-top: 28px;
+}
+
+  .coach-applications__list h3 {
+    margin: 0 0 16px;
+    font-size: 17px;
+    font-weight: 700;
+  }
+
+.coach-applications__item {
+  margin-top: 14px;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 11px;
+  background: #f9fafc;
+}
+
+.coach-applications__item-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+  .coach-applications__item-heading strong {
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+.coach-applications__item > p {
+  margin: 8px 0;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.coach-applications__status {
+  padding: 6px 9px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.coach-applications__status--pending {
+  background: #fff4db;
+  color: #996720;
+}
+
+.coach-applications__status--approved {
+  background: #e8f6ed;
+  color: #267346;
+}
+
+.coach-applications__status--rejected {
+  background: #fff0f1;
+  color: #a72d3b;
+}
+
+.coach-applications__participants {
+  margin-top: 16px;
+  font-size: 12px;
+}
+
+  .coach-applications__participants summary {
+    color: var(--color-primary);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .coach-applications__participants ul {
+    margin: 12px 0;
+    padding-left: 20px;
+  }
+
+  .coach-applications__participants li {
+    margin-bottom: 7px;
+  }
+
+.coach-applications__refresh {
+  width: 100%;
+  margin-top: 16px;
+  font-size: 12px;
+}
+
+.coach-applications button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
