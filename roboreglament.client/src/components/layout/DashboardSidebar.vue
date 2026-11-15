@@ -23,6 +23,9 @@
   const isAdministratorWorkspace = computed(
     () => dashboardStore.activeRole === 'Administrator',
   )
+  const isCoachWorkspace = computed(
+    () => dashboardStore.activeRole === 'Coach',
+  )
 
   function changeWorkspace(event: Event) {
     const target = event.target as HTMLSelectElement
@@ -30,13 +33,10 @@
 
     dashboardStore.setRole(role)
 
-    // После переключения открываем обзор
-    // выбранного рабочего кабинета.
     void router.push({ name: 'dashboard-overview' })
   }
 
-  // При прямом открытии /admin автоматически
-  // выбираем административный кабинет.
+
   watch(
     () => route.path,
     path => {
@@ -45,10 +45,16 @@
         path.startsWith('/admin/')
       ) {
         dashboardStore.setRole('Administrator')
+      } else if (
+        path === '/account/teams' ||
+        path.startsWith('/account/teams/')
+      ) {
+        dashboardStore.setRole('Coach')
       }
     },
     { immediate: true },
   )
+
 </script>
 
 <template>
@@ -105,6 +111,13 @@
                     exact-active-class="dashboard-sidebar__link--active">
           <span aria-hidden="true">♙</span>
           Пользователи
+        </RouterLink>
+        <RouterLink v-if="isCoachWorkspace"
+                    to="/account/teams"
+                    class="dashboard-sidebar__link"
+                    exact-active-class="dashboard-sidebar__link--active">
+          <span aria-hidden="true">◦</span>
+          Мои команды
         </RouterLink>
       </nav>
     </div>

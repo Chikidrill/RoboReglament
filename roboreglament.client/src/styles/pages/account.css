@@ -92,3 +92,52 @@
       text-align: left;
     }
 }
+
+.account-card__public-id {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 22px;
+  margin-bottom: 20px;
+  border-radius: 12px;
+  background: #f0f3fb;
+}
+
+.account-card__id-label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--color-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.account-card__id-value {
+  display: block;
+  color: var(--color-primary);
+  font-size: 27px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.account-card__id-hint {
+  max-width: 380px;
+  margin: 10px 0 0;
+  color: var(--color-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.account-card__copy-success {
+  margin: 0 0 16px;
+  color: #22703a;
+  font-size: 13px;
+}
+
+.account-card__copy-error {
+  margin: 0 0 16px;
+  color: #b42336;
+  font-size: 13px;
+}
+

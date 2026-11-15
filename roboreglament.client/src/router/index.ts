@@ -15,6 +15,10 @@ import AccountView from '@/views/AccountView.vue'
 import { useAuthStore } from '@/stores/auth'
 import DashboardLayout from '@/layouts/DashboardLayout.vue'
 import DashboardOverviewView from '@/views/DashboardOverviewView.vue'
+import CoachTeamView from '@/views/CoachTeamView.vue'
+import CoachTeamDetailsView from '@/views/CoachTeamDetailsView.vue'
+
+
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
 
@@ -76,6 +80,7 @@ const router = createRouter({
             description: 'У вашей учётной записи нет прав для просмотра этой страницы.',
           },
         },
+        
       ],
     },
 
@@ -97,6 +102,24 @@ const router = createRouter({
           name: 'dashboard-overview',
           component: DashboardOverviewView,
         },
+        {
+          path: 'teams',
+          name: 'coach-teams',
+          component: CoachTeamView,
+          meta: {
+            roles: ['Coach'],
+          },
+        },
+
+        {
+          path: 'teams/:id',
+          name: 'coach-team-details',
+          component: CoachTeamDetailsView,
+          meta: {
+            roles: ['Coach'],
+          },
+        },
+
       ],
     },
 
