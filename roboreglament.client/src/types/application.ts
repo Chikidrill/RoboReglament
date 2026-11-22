@@ -28,10 +28,13 @@ export interface TournamentApplication {
   accreditedAt: string | null
   accreditationComment: string | null
   participants: ApplicationParticipant[]
+  disciplineId: number
+  disciplineName: string
 }
 
 export interface CreateApplicationRequest {
   teamId: number
+  disciplineId: number
   saveAsDraft?: boolean
 }
 

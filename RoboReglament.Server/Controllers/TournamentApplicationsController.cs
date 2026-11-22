@@ -48,6 +48,20 @@ public class TournamentApplicationsController : ControllerBase
         if (!RegistrationOpen(tournament))
             return RegistrationClosed();
 
+        var discipline = await _context.Disciplines
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x =>
+                x.Id == request.DisciplineId &&
+                x.TournamentId == tournamentId);
+
+        if (discipline is null)
+        {
+            return NotFound(new
+            {
+                message = "Дисциплина не найдена в этом турнире."
+            });
+        }
+
         var team = await _context.Teams
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == request.TeamId);
@@ -61,7 +75,8 @@ public class TournamentApplicationsController : ControllerBase
         var exists = await _context.TournamentApplications
             .AnyAsync(x =>
                 x.TeamId == team.Id &&
-                x.TournamentId == tournamentId);
+                x.TournamentId == tournamentId &&
+                x.DisciplineId == request.DisciplineId);
 
         if (exists)
         {
@@ -85,6 +100,7 @@ public class TournamentApplicationsController : ControllerBase
         {
             TournamentId = tournamentId,
             TeamId = team.Id,
+            DisciplineId = discipline.Id,
 
             Status = request.SaveAsDraft
                 ? ApplicationStatus.Draft
@@ -119,7 +135,7 @@ public class TournamentApplicationsController : ControllerBase
                 tournamentId,
                 applicationId = application.Id
             },
-            ToResponse(application, team.Name));
+            ToResponse(application, team.Name, discipline.Name));
     }
 
     // Все собственные заявки тренера.
@@ -147,6 +163,7 @@ public class TournamentApplicationsController : ControllerBase
 
         var applications = await query
             .Include(x => x.Team)
+            .Include(x => x.Discipline)
             .Include(x => x.Tournament)
             .Include(x => x.DeclaredParticipants)
             .Include(x => x.Accreditation)
@@ -200,6 +217,7 @@ public class TournamentApplicationsController : ControllerBase
 
         var applications = await query
             .Include(x => x.Team)
+            .Include(x => x.Discipline)
             .Include(x => x.DeclaredParticipants)
             .Include(x => x.Accreditation)
             .OrderByDescending(x => x.SubmittedAt)
@@ -230,6 +248,7 @@ public class TournamentApplicationsController : ControllerBase
         var application = await _context.TournamentApplications
             .AsNoTracking()
             .Include(x => x.Team)
+            .Include(x => x.Discipline)
             .Include(x => x.DeclaredParticipants)
             .Include(x => x.Accreditation)
             .FirstOrDefaultAsync(x =>
@@ -692,6 +711,7 @@ public class TournamentApplicationsController : ControllerBase
     {
         return _context.TournamentApplications
             .Include(x => x.Team)
+            .Include(x => x.Discipline)
             .Include(x => x.Accreditation)
             .FirstOrDefaultAsync(x =>
                 x.Id == applicationId &&
@@ -790,7 +810,7 @@ public class TournamentApplicationsController : ControllerBase
 
     private static TournamentApplicationResponse ToResponse(
         TournamentApplication application,
-        string teamName)
+        string teamName, string? disciplineName = null)
     {
         return new TournamentApplicationResponse
         {
@@ -811,6 +831,10 @@ public class TournamentApplicationsController : ControllerBase
 
             AccreditationComment =
                 application.Accreditation?.Comment,
+            DisciplineId = application.DisciplineId,
+
+            DisciplineName =
+                disciplineName ?? application.Discipline.Name,
 
             Participants = application.DeclaredParticipants
                 .OrderBy(x => x.LastName)

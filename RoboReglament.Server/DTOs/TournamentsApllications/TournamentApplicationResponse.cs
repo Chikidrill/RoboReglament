@@ -16,4 +16,7 @@ public class TournamentApplicationResponse
 
     public List<ApplicationParticipantResponse> Participants { get; set; }
         = new();
+    public int DisciplineId { get; set; }
+
+    public string DisciplineName { get; set; } = string.Empty;
 }

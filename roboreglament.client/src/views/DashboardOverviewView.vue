@@ -139,7 +139,18 @@ const currentWorkspace = computed<WorkspaceInfo>(() => {
 
           <span>Открыть раздел →</span>
         </RouterLink>
+        <RouterLink v-if="dashboardStore.activeRole === 'Organizer'"
+                    :to="{ name: 'organizer-tournaments' }"
+                    class="dashboard-overview__card">
+          <h3>Мои турниры</h3>
 
+          <p>
+            Создание соревнований, управление дисциплинами,
+            рассмотрение заявок и аккредитация команд.
+          </p>
+
+          <span>Открыть раздел →</span>
+        </RouterLink>
       </div>
     </div>
   </section>

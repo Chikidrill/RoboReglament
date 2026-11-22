@@ -26,5 +26,8 @@ namespace RoboReglament.Server.Models
 
         public ICollection<TournamentOrganizer> Organizers { get; set; }
             = new List<TournamentOrganizer>();
+
+        public ICollection<Discipline> Disciplines { get; set; }
+            = new List<Discipline>();
     }
 }

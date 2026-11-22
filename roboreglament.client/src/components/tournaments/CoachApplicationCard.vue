@@ -176,6 +176,7 @@ async function performAction(action: Action) {
         }}
       </span>
     </div>
+    <p>Дисциплина: {{ application.disciplineName }}</p>
 
     <p v-if="application.submittedAt">
       Подана:

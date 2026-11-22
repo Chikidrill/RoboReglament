@@ -21,4 +21,7 @@ public class ProtocolTemplate
 
     public ICollection<Match> Matches { get; set; }
         = new List<Match>();
+    public int DisciplineId { get; set; }
+
+    public Discipline Discipline { get; set; } = null!;
 }

@@ -176,7 +176,6 @@ onUnmounted(() => {
         <span>Статус</span>
         <select v-model="selectedStatus">
           <option value="all">Все статусы</option>
-          <option value="Draft">Планируется</option>
           <option value="Registration">Регистрация</option>
           <option value="InProgress">Идёт турнир</option>
           <option value="Completed">Завершён</option>

@@ -26,6 +26,9 @@
   const applications = ref<TournamentApplication[]>([])
 
   const selectedTeamId = ref(0)
+  const selectedDisciplineId = ref(
+    props.tournament.disciplines[0]?.id ?? 0,
+  )
 
   const isLoading = ref(true)
   const isCreating = ref(false)
@@ -45,19 +48,21 @@
   const availableTeams = computed(() =>
     teams.value.filter(team =>
       !applications.value.some(
-        application => application.teamId === team.id,
+        application =>
+          application.teamId === team.id &&
+          application.disciplineId === selectedDisciplineId.value,
       ),
     ),
   )
-
   const selectedTeam = computed(() =>
     availableTeams.value.find(
       team => team.id === selectedTeamId.value,
     ),
-  )
+  ) 
 
   const canSaveDraft = computed(() =>
     registrationOpen.value &&
+    selectedDisciplineId.value > 0 &&
     selectedTeam.value !== undefined &&
     !isCreating.value,
   )
@@ -131,6 +136,7 @@
         tournamentId,
         {
           teamId: selectedTeamId.value,
+          disciplineId: selectedDisciplineId.value,
           saveAsDraft,
         },
       )
@@ -166,6 +172,11 @@
     selectAvailableTeam()
   }
 
+    watch(selectedDisciplineId, () => {
+    selectedTeamId.value = 0
+    selectAvailableTeam()
+  })
+
   watch(
     [
       () => props.tournament.id,
@@ -180,6 +191,7 @@
     },
     { immediate: true },
   )
+
 </script>
 
 <template>
@@ -213,7 +225,26 @@
         {{ actionError }}
       </p>
 
-      <form v-if="registrationOpen && availableTeams.length > 0"
+
+      <div v-if="registrationOpen && tournament.disciplines.length"
+           class="coach-applications__form"
+           style="margin-bottom: 16px">
+        <label for="application-discipline">
+          Выберите дисциплину
+        </label>
+
+        <select id="application-discipline"
+                v-model.number="selectedDisciplineId"
+                :disabled="isCreating">
+          <option v-for="discipline in tournament.disciplines"
+                  :key="discipline.id"
+                  :value="discipline.id">
+            {{ discipline.name }}
+          </option>
+        </select>
+      </div>
+
+      <form v-if="registrationOpen && selectedDisciplineId > 0 && availableTeams.length > 0"
             class="coach-applications__form"
             @submit.prevent="createApplication(false)">
         <label for="application-team">
