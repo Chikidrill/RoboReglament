@@ -1,3 +1,22 @@
+
+export type TournamentStatus =
+  | 'Draft'
+  | 'Registration'
+  | 'InProgress'
+  | 'Completed'
+
+export interface Discipline {
+  id: number
+  tournamentId: number
+  name: string
+  description: string | null
+}
+
+export interface DisciplineRequest {
+  name: string
+  description: string | null
+}
+
 export interface Tournament {
   id: number
   name: string
@@ -8,10 +27,32 @@ export interface Tournament {
   registrationDeadline?: string | null
   status: TournamentStatus
   createdAt?: string
+  disciplines: Discipline[]
 }
 
-export type TournamentStatus =
-  | 'Draft'
-  | 'Registration'
-  | 'InProgress'
-  | 'Completed'
+export interface TournamentRequest {
+  name: string
+  description: string | null
+  location: string | null
+  startDate: string
+  endDate: string
+  registrationDeadline: string | null
+}
+
+export interface TournamentOrganizer {
+  id: string
+  publicId: number
+  email: string
+  firstName: string
+  lastName: string
+  middleName: string | null
+}
+
+export interface TournamentOrganizerLookup {
+  id: string
+  publicId: number
+  firstName: string
+  lastName: string
+  middleName: string | null
+  alreadyOrganizer: boolean
+}

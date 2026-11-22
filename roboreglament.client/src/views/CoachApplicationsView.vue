@@ -37,7 +37,8 @@ const filteredItems = computed(() => {
     const matchesQuery =
       !query ||
       item.tournamentName.toLowerCase().includes(query) ||
-      application.teamName.toLowerCase().includes(query)
+      application.teamName.toLowerCase().includes(query) ||
+      application.disciplineName.toLowerCase().includes(query)
 
     const effectiveStatus = application.isAccredited
       ? 'Accredited'

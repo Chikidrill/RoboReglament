@@ -29,4 +29,7 @@ public class TournamentApplication
 
     [Timestamp]
     public byte[] RowVersion { get; set; } = null!;
+    public int DisciplineId { get; set; }
+
+    public Discipline Discipline { get; set; } = null!;
 }

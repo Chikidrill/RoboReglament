@@ -24,5 +24,8 @@ namespace RoboReglament.Server.Models
 
         public ICollection<MatchGroup> MatchGroups { get; set; }
             = new List<MatchGroup>();
+        public int DisciplineId { get; set; }
+
+        public Discipline Discipline { get; set; } = null!;
     }
 }

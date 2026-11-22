@@ -186,6 +186,34 @@ namespace RoboReglament.Server.Migrations
                     b.ToTable("Accreditations");
                 });
 
+            modelBuilder.Entity("RoboReglament.Server.Models.Discipline", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("TournamentId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TournamentId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("Disciplines");
+                });
+
             modelBuilder.Entity("RoboReglament.Server.Models.Identity.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")
@@ -344,6 +372,9 @@ namespace RoboReglament.Server.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<int>("DisciplineId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Name")
                         .HasColumnType("nvarchar(max)");
 
@@ -366,7 +397,7 @@ namespace RoboReglament.Server.Migrations
 
                     b.HasIndex("ProtocolTemplateId");
 
-                    b.HasIndex("TournamentId", "Number")
+                    b.HasIndex("TournamentId", "DisciplineId", "Number")
                         .IsUnique();
 
                     b.ToTable("Matches");
@@ -521,6 +552,9 @@ namespace RoboReglament.Server.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("DisciplineId")
+                        .HasColumnType("int");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
@@ -533,7 +567,7 @@ namespace RoboReglament.Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TournamentId");
+                    b.HasIndex("TournamentId", "DisciplineId");
 
                     b.ToTable("ProtocolTemplates");
                 });
@@ -638,6 +672,9 @@ namespace RoboReglament.Server.Migrations
                     b.Property<string>("Comment")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("DisciplineId")
+                        .HasColumnType("int");
+
                     b.Property<byte[]>("RowVersion")
                         .IsConcurrencyToken()
                         .IsRequired()
@@ -660,7 +697,7 @@ namespace RoboReglament.Server.Migrations
 
                     b.HasIndex("TeamId");
 
-                    b.HasIndex("TournamentId", "TeamId")
+                    b.HasIndex("TournamentId", "DisciplineId", "TeamId")
                         .IsUnique();
 
                     b.ToTable("TournamentApplications");
@@ -798,6 +835,17 @@ namespace RoboReglament.Server.Migrations
                     b.Navigation("Application");
                 });
 
+            modelBuilder.Entity("RoboReglament.Server.Models.Discipline", b =>
+                {
+                    b.HasOne("RoboReglament.Server.Models.Tournament", "Tournament")
+                        .WithMany("Disciplines")
+                        .HasForeignKey("TournamentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tournament");
+                });
+
             modelBuilder.Entity("RoboReglament.Server.Models.JudgeProtocol", b =>
                 {
                     b.HasOne("RoboReglament.Server.Models.Identity.ApplicationUser", "Judge")
@@ -847,6 +895,15 @@ namespace RoboReglament.Server.Migrations
                         .HasForeignKey("TournamentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("RoboReglament.Server.Models.Discipline", "Discipline")
+                        .WithMany()
+                        .HasForeignKey("TournamentId", "DisciplineId")
+                        .HasPrincipalKey("TournamentId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Discipline");
 
                     b.Navigation("ProtocolTemplate");
 
@@ -921,6 +978,15 @@ namespace RoboReglament.Server.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("RoboReglament.Server.Models.Discipline", "Discipline")
+                        .WithMany()
+                        .HasForeignKey("TournamentId", "DisciplineId")
+                        .HasPrincipalKey("TournamentId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Discipline");
+
                     b.Navigation("Tournament");
                 });
 
@@ -956,6 +1022,15 @@ namespace RoboReglament.Server.Migrations
                         .HasForeignKey("TournamentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("RoboReglament.Server.Models.Discipline", "Discipline")
+                        .WithMany()
+                        .HasForeignKey("TournamentId", "DisciplineId")
+                        .HasPrincipalKey("TournamentId", "Id")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Discipline");
 
                     b.Navigation("Team");
 
@@ -1050,6 +1125,8 @@ namespace RoboReglament.Server.Migrations
             modelBuilder.Entity("RoboReglament.Server.Models.Tournament", b =>
                 {
                     b.Navigation("Applications");
+
+                    b.Navigation("Disciplines");
 
                     b.Navigation("Matches");
 

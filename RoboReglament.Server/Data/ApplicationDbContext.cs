@@ -35,6 +35,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<TeamCoach> TeamCoaches => Set<TeamCoach>();
     public DbSet<TournamentApplicationParticipant> TournamentApplicationParticipants
     => Set<TournamentApplicationParticipant>();
+
+    public DbSet<Discipline> Disciplines => Set<Discipline>();
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -55,7 +57,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             .IsUnique();
 
         builder.Entity<TournamentApplication>()
-            .HasIndex(x => new { x.TournamentId, x.TeamId })
+            .HasIndex(x => new
+            {
+                x.TournamentId,
+                x.DisciplineId,
+                x.TeamId
+            })
             .IsUnique();
 
         builder.Entity<TournamentApplication>()
@@ -71,7 +78,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
         // Номер матча уникален внутри турнира.
         builder.Entity<Match>()
-            .HasIndex(x => new { x.TournamentId, x.Number })
+            .HasIndex(x => new
+            {
+                x.TournamentId,
+                x.DisciplineId,
+                x.Number
+            })
             .IsUnique();
 
         // Протокол матча удалять автоматически не нужно.
@@ -208,5 +220,73 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         builder.Entity<TournamentApplicationParticipant>()
             .Property(x => x.MiddleName)
             .HasMaxLength(100);
+
+
+        builder.Entity<Discipline>()
+            .HasOne(x => x.Tournament)
+            .WithMany(x => x.Disciplines)
+            .HasForeignKey(x => x.TournamentId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<Discipline>()
+            .HasIndex(x => new
+            {
+                x.TournamentId,
+                x.Name
+            })
+            .IsUnique();
+
+        builder.Entity<Discipline>()
+            .HasAlternateKey(x => new
+            {
+                x.TournamentId,
+                x.Id
+            });
+
+        builder.Entity<TournamentApplication>()
+            .HasOne(x => x.Discipline)
+            .WithMany()
+            .HasForeignKey(x => new
+            {
+                x.TournamentId,
+                x.DisciplineId
+            })
+            .HasPrincipalKey(x => new
+            {
+                x.TournamentId,
+                x.Id
+            })
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<Match>()
+            .HasOne(x => x.Discipline)
+            .WithMany()
+            .HasForeignKey(x => new
+            {
+                x.TournamentId,
+                x.DisciplineId
+            })
+            .HasPrincipalKey(x => new
+            {
+                x.TournamentId,
+                x.Id
+            })
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<ProtocolTemplate>()
+            .HasOne(x => x.Discipline)
+            .WithMany()
+            .HasForeignKey(x => new
+            {
+                x.TournamentId,
+                x.DisciplineId
+            })
+            .HasPrincipalKey(x => new
+            {
+                x.TournamentId,
+                x.Id
+            })
+            .OnDelete(DeleteBehavior.Restrict);
+
     }
 }

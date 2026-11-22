@@ -97,3 +97,39 @@ export async function refreshApplicationParticipants(
     { method: 'PUT' },
   )
 }
+
+
+export function reviewTournamentApplication(
+  tournamentId: number,
+  applicationId: number,
+  status: 'Approved' | 'Rejected',
+  comment: string | null,
+): Promise<TournamentApplication> {
+  return apiRequest<TournamentApplication>(
+    `${applicationsUrl(tournamentId)}/${applicationId}/status`,
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ status, comment }),
+    },
+  )
+}
+
+export function accreditTournamentApplication(
+  tournamentId: number,
+  applicationId: number,
+  comment: string | null,
+): Promise<TournamentApplication> {
+  return apiRequest<TournamentApplication>(
+    `${applicationsUrl(tournamentId)}/${applicationId}/accreditation`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ comment }),
+    },
+  )
+}

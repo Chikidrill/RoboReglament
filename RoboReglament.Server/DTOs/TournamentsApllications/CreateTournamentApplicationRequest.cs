@@ -9,4 +9,6 @@ public class CreateTournamentApplicationRequest
     public int TeamId { get; set; }
 
     public bool SaveAsDraft { get; set; }
+    [Range(1, int.MaxValue)]
+    public int DisciplineId { get; set; }
 }

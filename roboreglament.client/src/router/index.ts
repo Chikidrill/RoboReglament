@@ -18,6 +18,9 @@ import DashboardOverviewView from '@/views/DashboardOverviewView.vue'
 import CoachTeamView from '@/views/CoachTeamView.vue'
 import CoachTeamDetailsView from '@/views/CoachTeamDetailsView.vue'
 import CoachApplicationsView from '@/views/CoachApplicationsView.vue'
+import OrganizerTournamentsView from '@/views/OrganizerTournamentsView.vue'
+import OrganizerTournamentDetailsView from '@/views/OrganizerTournamentsDetailsView.vue'
+
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -126,6 +129,23 @@ const router = createRouter({
           component: CoachApplicationsView,
           meta: {
             roles: ['Coach'],
+          },
+        },
+
+        {
+          path: 'organizer/tournaments',
+          name: 'organizer-tournaments',
+          component: OrganizerTournamentsView,
+          meta: {
+            roles: ['Organizer'],
+          },
+        },
+        {
+          path: 'organizer/tournaments/:id',
+          name: 'organizer-tournament-details',
+          component: OrganizerTournamentDetailsView,
+          meta: {
+            roles: ['Organizer'],
           },
         },
 

@@ -137,6 +137,20 @@ watch(
           <p class="tournament-details__description">
             {{ tournament.description || 'Описание пока не добавлено.' }}
           </p>
+
+          <section class="tournament-disciplines">
+            <h2>Дисциплины</h2>
+
+            <article v-for="discipline in tournament.disciplines"
+                     :key="discipline.id">
+              <h3>{{ discipline.name }}</h3>
+
+              <p v-if="discipline.description">
+                {{ discipline.description }}
+              </p>
+            </article>
+          </section>
+
         </div>
 
         <aside class="tournament-details__aside">
@@ -166,8 +180,7 @@ watch(
           </div>
 
 
-          <CoachApplicationPanel v-if="isCoach"
-                                 :tournament="tournament" />
+          <CoachApplicationPanel v-if="isCoach" :key="tournament.id" :tournament="tournament" />
 
           <RouterLink v-else-if="canApply && !authStore.isAuthenticated"
                       :to="{
