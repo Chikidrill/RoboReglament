@@ -24,6 +24,9 @@ import TournamentEditor
 import OrganizerApplicationsPanel
   from '@/components/tournaments/OrganizerApplicationsPanel.vue'
 
+import ProtocolTemplatesPanel
+  from '@/components/tournaments/ProtocolTemplatesPanel.vue'
+
 import type {
   Tournament,
   TournamentRequest,
@@ -53,13 +56,19 @@ const editingTournament = ref(false)
 const error = ref('')
 const success = ref('')
 
-type Tab = 'overview' | 'disciplines' | 'organizers' | 'applications'
+type Tab =
+  | 'overview'
+  | 'disciplines'
+  | 'protocols'
+  | 'organizers'
+  | 'applications'
 
 const activeTab = ref<Tab>('overview')
 
 const tabs: { value: Tab; label: string }[] = [
   { value: 'overview', label: 'Основное' },
   { value: 'disciplines', label: 'Дисциплины' },
+  { value: 'protocols', label: 'Протоколы' },
   { value: 'organizers', label: 'Организаторы' },
   { value: 'applications', label: 'Заявки и аккредитация' },
 ]
@@ -674,8 +683,9 @@ watch(
         </article>
       </section>
 
-      <!-- Заявки -->
-
+      <ProtocolTemplatesPanel v-if="activeTab === 'protocols'"
+                              :key="tournament.id"
+                              :tournament="tournament" />
       <OrganizerApplicationsPanel v-if="activeTab === 'applications'"
                                   :key="tournament.id"
                                   :tournament="tournament" />

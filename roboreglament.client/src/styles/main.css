@@ -20,6 +20,7 @@
 @import './pages/coach-team-details.css';
 @import './components/tournament-applications.css';
 @import './pages/organizer.css';
+@import './components/protocol-templates.css';
 
 .placeholder-page {
   padding-top: 56px;
