@@ -27,6 +27,9 @@ import OrganizerApplicationsPanel
 import ProtocolTemplatesPanel
   from '@/components/tournaments/ProtocolTemplatesPanel.vue'
 
+import CompetitionMatchesPanel
+  from '@/components/tournaments/CompetitionMatchesPanel.vue'
+
 import type {
   Tournament,
   TournamentRequest,
@@ -60,6 +63,7 @@ type Tab =
   | 'overview'
   | 'disciplines'
   | 'protocols'
+  | 'matches'
   | 'organizers'
   | 'applications'
 
@@ -69,6 +73,7 @@ const tabs: { value: Tab; label: string }[] = [
   { value: 'overview', label: 'Основное' },
   { value: 'disciplines', label: 'Дисциплины' },
   { value: 'protocols', label: 'Протоколы' },
+  { value: 'matches', label: 'Матчи' },
   { value: 'organizers', label: 'Организаторы' },
   { value: 'applications', label: 'Заявки и аккредитация' },
 ]
@@ -375,6 +380,17 @@ async function removeOrganizer(person: TournamentOrganizer) {
     success.value = 'Организатор исключён.'
   })
 }
+
+
+function onDisciplineRulesSaved(updated: Discipline) {
+  if (!tournament.value) return
+
+  tournament.value.disciplines =
+    tournament.value.disciplines.map(item =>
+      item.id === updated.id ? updated : item,
+    )
+}
+
 
 watch(
   () => route.params.id,
@@ -686,6 +702,11 @@ watch(
       <ProtocolTemplatesPanel v-if="activeTab === 'protocols'"
                               :key="tournament.id"
                               :tournament="tournament" />
+
+      <CompetitionMatchesPanel v-if="activeTab === 'matches'"
+                               :key="tournament.id"
+                               :tournament="tournament"
+                               @rules-saved="onDisciplineRulesSaved" />
       <OrganizerApplicationsPanel v-if="activeTab === 'applications'"
                                   :key="tournament.id"
                                   :tournament="tournament" />

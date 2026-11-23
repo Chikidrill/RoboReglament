@@ -5,12 +5,23 @@ export type TournamentStatus =
   | 'InProgress'
   | 'Completed'
 
+export type CompetitionFormat = 'Run' | 'Match'
+export type ScoringMode = 'PerTeam' | 'PerAlliance'
+
 export interface Discipline {
   id: number
   tournamentId: number
   name: string
   description: string | null
+
+  format: CompetitionFormat
+  scoringMode: ScoringMode
+
+  sidesPerEvent: number
+  minTeamsPerSide: number
+  maxTeamsPerSide: number
 }
+
 
 export interface DisciplineRequest {
   name: string
