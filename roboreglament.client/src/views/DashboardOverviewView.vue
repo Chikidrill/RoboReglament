@@ -151,6 +151,20 @@ const currentWorkspace = computed<WorkspaceInfo>(() => {
 
           <span>Открыть раздел →</span>
         </RouterLink>
+
+        <RouterLink v-if="dashboardStore.activeRole === 'Judge'"
+                    :to="{ name: 'judge-matches' }"
+                    class="dashboard-overview__card">
+          <h3>Мои выступления</h3>
+
+          <p>
+            Назначенные матчи и заезды, выставление оценок
+            и заполнение судейских протоколов.
+          </p>
+
+          <span>Перейти к судейству →</span>
+        </RouterLink>
+
       </div>
     </div>
   </section>

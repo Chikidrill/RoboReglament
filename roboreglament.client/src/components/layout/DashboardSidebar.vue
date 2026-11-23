@@ -30,7 +30,9 @@
   const isOrganizerWorkspace = computed(
     () => dashboardStore.activeRole === 'Organizer',
   )
-
+  const isJudgeWorkspace = computed(
+    () => dashboardStore.activeRole === 'Judge',
+  )
   function changeWorkspace(event: Event) {
     const target = event.target as HTMLSelectElement
     const role = target.value as DashboardRole
@@ -61,6 +63,12 @@
         path.startsWith('/account/organizer/tournaments/')
             ) {
         dashboardStore.setRole('Organizer')
+      }
+      else if (
+        path === '/account/judge/matches' ||
+        path.startsWith('/account/judge/matches/')
+      ) {
+        dashboardStore.setRole('Judge')
       }
     },
     { immediate: true },
@@ -146,6 +154,15 @@
           <span aria-hidden="true">▦</span>
           Мои турниры
         </RouterLink>
+
+        <RouterLink v-if="isJudgeWorkspace"
+                    :to="{ name: 'judge-matches' }"
+                    class="dashboard-sidebar__link"
+                    active-class="dashboard-sidebar__link--active">
+          <span aria-hidden="true">▤</span>
+          Мои выступления
+        </RouterLink>
+
       </nav>
     </div>
   </aside>

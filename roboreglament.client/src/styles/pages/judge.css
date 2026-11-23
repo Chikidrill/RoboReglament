@@ -1,0 +1,287 @@
+
+.judge-page {
+  width: 100%;
+  max-width: 1200px;
+  padding-bottom: 40px;
+}
+
+.judge-page__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+  .judge-page__heading h1 {
+    margin: 0 0 10px;
+    font-size: 30px;
+  }
+
+  .judge-page__heading p {
+    margin: 5px 0;
+    color: var(--color-muted);
+    line-height: 1.6;
+  }
+
+.judge-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+  .judge-stats > div {
+    padding: 20px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: #fff;
+  }
+
+  .judge-stats span {
+    display: block;
+    margin-bottom: 10px;
+    color: var(--color-muted);
+    font-size: 13px;
+  }
+
+  .judge-stats strong {
+    font-size: 28px;
+  }
+
+.judge-toolbar {
+  margin-bottom: 22px;
+}
+
+  .judge-toolbar label,
+  .judge-scorecard__comment,
+  .judge-criterion label {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .judge-toolbar select,
+  .judge-criterion input,
+  .judge-scorecard textarea {
+    min-height: 44px;
+    padding: 11px 13px;
+    border: 1px solid var(--color-border);
+    border-radius: 9px;
+    background: #fff;
+    color: var(--color-text);
+    font: inherit;
+  }
+
+  .judge-toolbar select {
+    min-width: 240px;
+    max-width: 100%;
+  }
+
+.judge-empty,
+.judge-notice {
+  padding: 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: #f8fafc;
+  color: var(--color-muted);
+  line-height: 1.6;
+}
+
+  .judge-empty h2 {
+    margin-top: 0;
+    color: var(--color-text);
+  }
+
+.judge-match-list {
+  display: grid;
+  gap: 16px;
+}
+
+.judge-match-card,
+.judge-scorecard {
+  padding: 24px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.judge-match-card__header,
+.judge-scorecard__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.judge-match-card h2,
+.judge-scorecard h2 {
+  margin: 0 0 10px;
+  font-size: 20px;
+}
+
+.judge-match-card__header p,
+.judge-scorecard__header p {
+  margin: 5px 0;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.judge-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 12px;
+  border-radius: 30px;
+  background: #edf2f9;
+  color: #45618f;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.judge-status--InProgress {
+  background: #eaf6ee;
+  color: #237348;
+}
+
+.judge-status--Completed {
+  background: #e9f1ff;
+  color: #315bb5;
+}
+
+.judge-status--Cancelled {
+  background: #f2f2f2;
+  color: #757575;
+}
+
+.judge-match-card__sides {
+  display: grid;
+  grid-template-columns: repeat( auto-fit, minmax(200px, 1fr) );
+  gap: 14px;
+  margin: 22px 0;
+}
+
+.judge-side-preview {
+  padding: 16px;
+  border-radius: 10px;
+  background: #f6f8fc;
+}
+
+  .judge-side-preview p {
+    margin: 10px 0 0;
+    line-height: 1.6;
+    color: var(--color-muted);
+  }
+
+.judge-match-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding-top: 18px;
+  border-top: 1px solid var(--color-border);
+}
+
+  .judge-match-card__footer span {
+    color: var(--color-muted);
+    font-size: 13px;
+  }
+
+.judge-scorecard {
+  margin-top: 20px;
+}
+
+.judge-scorecard__form {
+  margin-top: 20px;
+}
+
+.judge-scorecard__progress,
+.judge-scorecard__result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 10px;
+  background: #f6f8fc;
+}
+
+.judge-scorecard__progress {
+  margin-bottom: 18px;
+}
+
+.judge-criterion {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 160px;
+  align-items: center;
+  gap: 24px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.judge-criterion__info strong {
+  display: block;
+  font-size: 15px;
+}
+
+.judge-criterion__info p {
+  margin: 7px 0;
+  color: var(--color-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.judge-criterion input {
+  width: 100%;
+}
+
+.judge-scorecard__comment {
+  margin-top: 20px;
+}
+
+.judge-scorecard textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+.judge-scorecard__result {
+  margin-top: 20px;
+}
+
+  .judge-scorecard__result strong {
+    font-size: 22px;
+  }
+
+.judge-scorecard__submitted {
+  margin-top: 18px;
+  color: #237348;
+  font-weight: 600;
+}
+
+@media (max-width: 640px) {
+  .judge-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .judge-criterion {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .judge-match-card,
+  .judge-scorecard {
+    padding: 16px;
+  }
+
+  .judge-page__heading h1 {
+    font-size: 25px;
+  }
+
+  .judge-toolbar select {
+    width: 100%;
+  }
+}
