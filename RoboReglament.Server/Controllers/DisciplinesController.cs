@@ -88,6 +88,133 @@ public class DisciplinesController : ControllerBase
         return Ok(ToResponse(discipline));
     }
 
+
+    [HttpPut("{disciplineId:int}/rules")]
+    public async Task<IActionResult> UpdateRules(
+        int tournamentId,
+        int disciplineId,
+        DisciplineRulesRequest request)
+    {
+        // Проверка прав организатора.
+        // Метод также запрещает изменения
+        // после открытия регистрации.
+        var error = await CheckAccessAsync(tournamentId);
+
+        if (error is not null)
+            return error;
+
+        var discipline = await _context.Disciplines
+            .FirstOrDefaultAsync(x =>
+                x.Id == disciplineId &&
+                x.TournamentId == tournamentId);
+
+        if (discipline is null)
+        {
+            return NotFound(new
+            {
+                message = "Дисциплина не найдена."
+            });
+        }
+
+        var validationError = ValidateRules(request);
+
+        if (validationError is not null)
+        {
+            return BadRequest(new
+            {
+                message = validationError
+            });
+        }
+
+        // Дополнительная защита для случая,
+        // если матчи уже существуют в базе.
+        var hasMatches = await _context.Matches
+            .AnyAsync(x =>
+                x.TournamentId == tournamentId &&
+                x.DisciplineId == disciplineId);
+
+        if (hasMatches)
+        {
+            return Conflict(new
+            {
+                message =
+                    "Нельзя менять правила дисциплины " +
+                    "с уже созданными матчами."
+            });
+        }
+
+        discipline.Format = request.Format!.Value;
+        discipline.ScoringMode = request.ScoringMode!.Value;
+        discipline.SidesPerEvent = request.SidesPerEvent;
+        discipline.MinTeamsPerSide = request.MinTeamsPerSide;
+        discipline.MaxTeamsPerSide = request.MaxTeamsPerSide;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(ToResponse(discipline));
+    }
+
+    private static string? ValidateRules(
+        DisciplineRulesRequest request)
+    {
+        if (!request.Format.HasValue ||
+            !Enum.IsDefined(
+                typeof(CompetitionFormat),
+                request.Format.Value))
+        {
+            return "Недопустимый формат соревнования.";
+        }
+
+        if (!request.ScoringMode.HasValue ||
+            !Enum.IsDefined(
+                typeof(ScoringMode),
+                request.ScoringMode.Value))
+        {
+            return "Недопустимый тип зачёта.";
+        }
+
+        if (request.SidesPerEvent is < 1 or > 4)
+        {
+            return "Количество сторон должно быть от 1 до 4.";
+        }
+
+        if (request.MinTeamsPerSide is < 1 or > 4 ||
+            request.MaxTeamsPerSide is < 1 or > 4 ||
+            request.MinTeamsPerSide > request.MaxTeamsPerSide)
+        {
+            return "Некорректное количество команд в стороне.";
+        }
+
+        if (request.Format == CompetitionFormat.Run &&
+            request.SidesPerEvent != 1)
+        {
+            return "В одном заезде должна быть одна сторона.";
+        }
+
+        if (request.Format == CompetitionFormat.Match &&
+            request.SidesPerEvent < 2)
+        {
+            return "В матче должно быть минимум две стороны.";
+        }
+
+        if (request.ScoringMode == ScoringMode.PerTeam &&
+            (request.MinTeamsPerSide != 1 ||
+             request.MaxTeamsPerSide != 1))
+        {
+            return "При зачёте по командам " +
+                   "в каждой стороне должна быть одна команда.";
+        }
+
+        if (request.ScoringMode == ScoringMode.PerAlliance &&
+            request.MinTeamsPerSide < 2)
+        {
+            return "Союз должен состоять минимум из двух команд.";
+        }
+
+        return null;
+    }
+
+
     [HttpDelete("{disciplineId:int}")]
     public async Task<IActionResult> Delete(
         int tournamentId,
@@ -180,14 +307,24 @@ public class DisciplinesController : ControllerBase
         });
     }
 
+
     private static DisciplineResponse ToResponse(Discipline discipline)
     {
         return new DisciplineResponse
         {
             Id = discipline.Id,
             TournamentId = discipline.TournamentId,
+
             Name = discipline.Name,
-            Description = discipline.Description
+            Description = discipline.Description,
+
+            Format = discipline.Format,
+            ScoringMode = discipline.ScoringMode,
+
+            SidesPerEvent = discipline.SidesPerEvent,
+            MinTeamsPerSide = discipline.MinTeamsPerSide,
+            MaxTeamsPerSide = discipline.MaxTeamsPerSide
         };
     }
+
 }

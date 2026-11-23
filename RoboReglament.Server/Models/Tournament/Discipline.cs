@@ -16,4 +16,21 @@ public class Discipline
 
     [MaxLength(2000)]
     public string? Description { get; set; }
+
+    // Заезд или матч.
+    public CompetitionFormat Format { get; set; }
+        = CompetitionFormat.Run;
+
+    // По отдельным командам или по союзам.
+    public ScoringMode ScoringMode { get; set; }
+        = ScoringMode.PerTeam;
+
+    // Количество соревнующихся сторон.
+    public int SidesPerEvent { get; set; } = 1;
+
+    // Минимальное количество команд в одной стороне.
+    public int MinTeamsPerSide { get; set; } = 1;
+
+    // Максимальное количество команд в одной стороне.
+    public int MaxTeamsPerSide { get; set; } = 1;
 }
