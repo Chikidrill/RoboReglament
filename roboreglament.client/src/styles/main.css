@@ -21,6 +21,7 @@
 @import './components/tournament-applications.css';
 @import './pages/organizer.css';
 @import './components/protocol-templates.css';
+@import './components/competition-matches.css';
 
 .placeholder-page {
   padding-top: 56px;

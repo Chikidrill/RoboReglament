@@ -173,3 +173,30 @@ export function removeTournamentOrganizer(
     { method: 'DELETE' },
   )
 }
+
+
+import type {
+  CompetitionFormat,
+  ScoringMode,
+} from '@/types/tournament'
+
+export interface DisciplineRulesRequest {
+  format: CompetitionFormat
+  scoringMode: ScoringMode
+  sidesPerEvent: number
+  minTeamsPerSide: number
+  maxTeamsPerSide: number
+}
+
+export function updateDisciplineRules(
+  tournamentId: number,
+  disciplineId: number,
+  request: DisciplineRulesRequest,
+): Promise<Discipline> {
+  return apiRequest<Discipline>(
+    `/api/tournaments/${tournamentId}/disciplines/` +
+    `${disciplineId}/rules`,
+    json('PUT', request),
+  )
+}
+

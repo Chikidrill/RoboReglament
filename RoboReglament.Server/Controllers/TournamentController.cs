@@ -292,6 +292,36 @@ public class TournamentsController : ControllerBase
             }
         }
 
+        if (request.Status == TournamentStatus.Completed)
+        {
+            var hasCompletedMatch = await _context.Matches
+                .AnyAsync(x =>
+                    x.TournamentId == id &&
+                    x.Status == MatchStatus.Completed);
+
+            if (!hasCompletedMatch)
+            {
+                return Conflict(new
+                {
+                    message = "Для завершения турнира необходим хотя бы один завершённый матч или заезд."
+                });
+            }
+
+            var hasUnfinishedMatches = await _context.Matches
+                .AnyAsync(x =>
+                    x.TournamentId == id &&
+                    x.Status != MatchStatus.Completed &&
+                    x.Status != MatchStatus.Cancelled);
+
+            if (hasUnfinishedMatches)
+            {
+                return Conflict(new
+                {
+                    message = "Сначала завершите или отмените все выступления турнира."
+                });
+            }
+        }
+
         tournament.Status = request.Status;
 
         await _context.SaveChangesAsync();
@@ -592,7 +622,14 @@ public class TournamentsController : ControllerBase
                     Id = x.Id,
                     TournamentId = x.TournamentId,
                     Name = x.Name,
-                    Description = x.Description
+                    Description = x.Description,
+
+                    Format = x.Format,
+                    ScoringMode = x.ScoringMode,
+
+                    SidesPerEvent = x.SidesPerEvent,
+                    MinTeamsPerSide = x.MinTeamsPerSide,
+                    MaxTeamsPerSide = x.MaxTeamsPerSide
                 })
                 .ToList()
         };

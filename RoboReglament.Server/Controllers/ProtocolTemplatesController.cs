@@ -451,10 +451,16 @@ public sealed class ProtocolTemplatesController : ControllerBase
                 x.DisciplineId == disciplineId);
     }
 
-    // Блокировка после появления оценок либо
-    // отправленных судейских протоколов.
     private async Task<bool> IsLockedAsync(int templateId)
     {
+        // Используемые в выступлениях шаблоны
+        // не должны менять структуру критериев.
+        var usedInMatches = await _context.Matches
+            .AnyAsync(x => x.ProtocolTemplateId == templateId);
+
+        if (usedInMatches)
+            return true;
+
         var hasScores = await _context.JudgeScores
             .AnyAsync(x =>
                 x.ProtocolCriterion.ProtocolTemplateId == templateId);

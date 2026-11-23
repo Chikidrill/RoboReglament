@@ -27,5 +27,8 @@ namespace RoboReglament.Server.Models
         public int DisciplineId { get; set; }
 
         public Discipline Discipline { get; set; } = null!;
+
+        public ICollection<MatchJudge> Judges { get; set; }
+    = new List<MatchJudge>();
     }
 }

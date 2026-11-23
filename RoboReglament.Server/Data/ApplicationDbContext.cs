@@ -20,6 +20,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<Accreditation> Accreditations => Set<Accreditation>();
 
     public DbSet<Match> Matches => Set<Match>();
+    public DbSet<MatchJudge> MatchJudges => Set<MatchJudge>();
     public DbSet<MatchGroup> MatchGroups => Set<MatchGroup>();
     public DbSet<MatchTeam> MatchTeams => Set<MatchTeam>();
 
@@ -243,6 +244,46 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 x.Id
             });
 
+
+
+        builder.Entity<Discipline>()
+            .Property(x => x.SidesPerEvent)
+            .HasDefaultValue(1);
+
+        builder.Entity<Discipline>()
+            .Property(x => x.MinTeamsPerSide)
+            .HasDefaultValue(1);
+
+        builder.Entity<Discipline>()
+            .Property(x => x.MaxTeamsPerSide)
+            .HasDefaultValue(1);
+
+        builder.Entity<Discipline>()
+            .ToTable(table => table.HasCheckConstraint(
+                "CK_Disciplines_CompetitionRules",
+                @"(
+            (
+                ([Format] = 0 AND [SidesPerEvent] = 1)
+                OR
+                ([Format] = 1 AND [SidesPerEvent] BETWEEN 2 AND 4)
+            )
+            AND
+            (
+                (
+                    [ScoringMode] = 0
+                    AND [MinTeamsPerSide] = 1
+                    AND [MaxTeamsPerSide] = 1
+                )
+                OR
+                (
+                    [ScoringMode] = 1
+                    AND [MinTeamsPerSide] BETWEEN 2 AND 4
+                    AND [MaxTeamsPerSide]
+                        BETWEEN [MinTeamsPerSide] AND 4
+                )
+            )
+        )"));
+
         builder.Entity<TournamentApplication>()
             .HasOne(x => x.Discipline)
             .WithMany()
@@ -288,5 +329,25 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             })
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.Entity<MatchJudge>()
+            .HasIndex(x => new { x.MatchId, x.JudgeId })
+            .IsUnique();
+
+        builder.Entity<MatchJudge>()
+            .HasOne(x => x.Match)
+            .WithMany(x => x.Judges)
+            .HasForeignKey(x => x.MatchId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<MatchJudge>()
+            .HasOne(x => x.Judge)
+            .WithMany()
+            .HasForeignKey(x => x.JudgeId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Entity<JudgeProtocol>()
+            .HasIndex(x => new { x.MatchGroupId, x.JudgeId })
+            .IsUnique()
+            .HasFilter("[JudgeId] IS NOT NULL");
     }
 }

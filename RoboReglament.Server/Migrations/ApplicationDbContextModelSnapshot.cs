@@ -198,10 +198,31 @@ namespace RoboReglament.Server.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
 
+                    b.Property<int>("Format")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxTeamsPerSide")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
+                    b.Property<int>("MinTeamsPerSide")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("ScoringMode")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SidesPerEvent")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
 
                     b.Property<int>("TournamentId")
                         .HasColumnType("int");
@@ -211,7 +232,10 @@ namespace RoboReglament.Server.Migrations
                     b.HasIndex("TournamentId", "Name")
                         .IsUnique();
 
-                    b.ToTable("Disciplines");
+                    b.ToTable("Disciplines", t =>
+                        {
+                            t.HasCheckConstraint("CK_Disciplines_CompetitionRules", "(\r\n            (\r\n                ([Format] = 0 AND [SidesPerEvent] = 1)\r\n                OR\r\n                ([Format] = 1 AND [SidesPerEvent] BETWEEN 2 AND 4)\r\n            )\r\n            AND\r\n            (\r\n                (\r\n                    [ScoringMode] = 0\r\n                    AND [MinTeamsPerSide] = 1\r\n                    AND [MaxTeamsPerSide] = 1\r\n                )\r\n                OR\r\n                (\r\n                    [ScoringMode] = 1\r\n                    AND [MinTeamsPerSide] BETWEEN 2 AND 4\r\n                    AND [MaxTeamsPerSide]\r\n                        BETWEEN [MinTeamsPerSide] AND 4\r\n                )\r\n            )\r\n        )");
+                        });
                 });
 
             modelBuilder.Entity("RoboReglament.Server.Models.Identity.ApplicationUser", b =>
@@ -328,7 +352,9 @@ namespace RoboReglament.Server.Migrations
 
                     b.HasIndex("JudgeId");
 
-                    b.HasIndex("MatchGroupId");
+                    b.HasIndex("MatchGroupId", "JudgeId")
+                        .IsUnique()
+                        .HasFilter("[JudgeId] IS NOT NULL");
 
                     b.ToTable("JudgeProtocols");
                 });
@@ -426,6 +452,34 @@ namespace RoboReglament.Server.Migrations
                         .IsUnique();
 
                     b.ToTable("MatchGroups");
+                });
+
+            modelBuilder.Entity("RoboReglament.Server.Models.MatchJudge", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("AssignedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("JudgeId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("MatchId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JudgeId");
+
+                    b.HasIndex("MatchId", "JudgeId")
+                        .IsUnique();
+
+                    b.ToTable("MatchJudges");
                 });
 
             modelBuilder.Entity("RoboReglament.Server.Models.MatchTeam", b =>
@@ -921,6 +975,25 @@ namespace RoboReglament.Server.Migrations
                     b.Navigation("Match");
                 });
 
+            modelBuilder.Entity("RoboReglament.Server.Models.MatchJudge", b =>
+                {
+                    b.HasOne("RoboReglament.Server.Models.Identity.ApplicationUser", "Judge")
+                        .WithMany()
+                        .HasForeignKey("JudgeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("RoboReglament.Server.Models.Match", "Match")
+                        .WithMany("Judges")
+                        .HasForeignKey("MatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Judge");
+
+                    b.Navigation("Match");
+                });
+
             modelBuilder.Entity("RoboReglament.Server.Models.MatchTeam", b =>
                 {
                     b.HasOne("RoboReglament.Server.Models.MatchGroup", "MatchGroup")
@@ -1089,6 +1162,8 @@ namespace RoboReglament.Server.Migrations
 
             modelBuilder.Entity("RoboReglament.Server.Models.Match", b =>
                 {
+                    b.Navigation("Judges");
+
                     b.Navigation("MatchGroups");
                 });
 
