@@ -8,7 +8,7 @@ using RoboReglament.Server.Data;
 using RoboReglament.Server.DTOs.Protocols;
 using RoboReglament.Server.Models;
 using RoboReglament.Server.Models.Identity;
-
+using RoboReglament.Server.Services;
 namespace RoboReglament.Server.Controllers;
 
 [ApiController]
@@ -279,7 +279,7 @@ public sealed class ProtocolTemplatesController : ControllerBase
         return NoContent();
     }
 
-    // Пробный расчёт результатов без сохранения оценок.
+
     [HttpPost("{templateId:int}/preview")]
     public async Task<IActionResult> Preview(
         int tournamentId,
@@ -311,86 +311,48 @@ public sealed class ProtocolTemplatesController : ControllerBase
             });
         }
 
-        if (request.Scores is null ||
-            request.Scores.Count != criteria.Count ||
-            request.Scores.Select(x => x.CriterionId)
-                .Distinct().Count() != criteria.Count)
+        var scores = (request.Scores ?? new())
+            .Select(x => new ScoreEntry(
+                x.CriterionId,
+                x.Value))
+            .ToList();
+
+        var validationError = ProtocolScoreCalculator.Validate(
+            criteria,
+            scores,
+            requireComplete: true);
+
+        if (validationError is not null)
         {
             return BadRequest(new
             {
-                message =
-                    "Укажите по одной оценке для каждого критерия."
+                message = validationError
             });
         }
 
-        var submitted = request.Scores
-            .ToDictionary(x => x.CriterionId, x => x.Value);
+        var calculation = ProtocolScoreCalculator.Calculate(
+            criteria, scores);
 
-        var result = new PreviewProtocolResponse
+        var response = new PreviewProtocolResponse
         {
-            TemplateId = templateId
+            TemplateId = templateId,
+            Total = calculation.Total,
+            MaximumPossible = calculation.MaximumPossible,
+
+            Criteria = calculation.Criteria
+                .Select(x => new PreviewCriterionResponse
+                {
+                    CriterionId = x.CriterionId,
+                    Name = x.Name,
+                    Value = x.Value,
+                    Weight = x.Weight,
+                    IsPenalty = x.IsPenalty,
+                    Contribution = x.Contribution
+                })
+                .ToList()
         };
 
-        decimal maximum = 0;
-        decimal total = 0;
-
-        foreach (var criterion in criteria)
-        {
-            if (!submitted.TryGetValue(
-                    criterion.Id, out var value))
-            {
-                return BadRequest(new
-                {
-                    message = "Передан неизвестный критерий."
-                });
-            }
-
-            if (decimal.Round(value, 2) != value ||
-                value < criterion.MinValue ||
-                !criterion.MaxValue.HasValue ||
-                value > criterion.MaxValue.Value)
-            {
-                return BadRequest(new
-                {
-                    message =
-                        $"Недопустимый балл по критерию «{criterion.Name}»."
-                });
-            }
-
-            var sign = criterion.IsPenalty ? -1m : 1m;
-
-            var contribution = decimal.Round(
-                sign * value * criterion.Weight,
-                2,
-                MidpointRounding.AwayFromZero);
-
-            var bestValue = criterion.IsPenalty
-                ? criterion.MinValue
-                : criterion.MaxValue.Value;
-
-            var bestContribution = decimal.Round(
-                sign * bestValue * criterion.Weight,
-                2,
-                MidpointRounding.AwayFromZero);
-
-            total += contribution;
-            maximum += bestContribution;
-
-            result.Criteria.Add(new PreviewCriterionResponse
-            {
-                CriterionId = criterion.Id,
-                Name = criterion.Name,
-                Value = value,
-                Weight = criterion.Weight,
-                IsPenalty = criterion.IsPenalty,
-                Contribution = contribution
-            });
-        }
-
-        result.Total = total;
-        result.MaximumPossible = maximum;
-
-        return Ok(result);
+        return Ok(response);
     }
 
     // Проверка доступа организатора к дисциплине.
