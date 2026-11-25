@@ -629,7 +629,12 @@ public class TournamentsController : ControllerBase
 
                     SidesPerEvent = x.SidesPerEvent,
                     MinTeamsPerSide = x.MinTeamsPerSide,
-                    MaxTeamsPerSide = x.MaxTeamsPerSide
+                    MaxTeamsPerSide = x.MaxTeamsPerSide,
+                    JudgeAggregationMethod = x.JudgeAggregationMethod,
+                    RankingMethod = x.RankingMethod,
+                    WinPoints = x.WinPoints,
+                    DrawPoints = x.DrawPoints,
+                    LossPoints = x.LossPoints,
                 })
                 .ToList()
         };

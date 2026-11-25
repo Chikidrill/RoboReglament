@@ -18,4 +18,13 @@ public class DisciplineResponse
 
     public int MinTeamsPerSide { get; set; }
     public int MaxTeamsPerSide { get; set; }
+
+    public JudgeAggregationMethod JudgeAggregationMethod { get; set; }
+    public RankingMethod RankingMethod { get; set; }
+
+
+    public int WinPoints { get; set; }
+    public int DrawPoints { get; set; }
+    public int LossPoints { get; set; }
+
 }

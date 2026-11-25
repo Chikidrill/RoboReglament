@@ -20,4 +20,20 @@ public class DisciplineRulesRequest
 
     [Range(1, 4)]
     public int MaxTeamsPerSide { get; set; }
+
+
+    [Required]
+    public JudgeAggregationMethod? JudgeAggregationMethod { get; set; }
+    public RankingMethod? RankingMethod { get; set; }
+
+
+    [Range(0, 100)]
+    public int? WinPoints { get; set; }
+
+    [Range(0, 100)]
+    public int? DrawPoints { get; set; }
+
+    [Range(0, 100)]
+    public int? LossPoints { get; set; }
+
 }

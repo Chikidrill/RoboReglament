@@ -10,7 +10,7 @@ using RoboReglament.Server.Data;
 using RoboReglament.Server.DTOs.Matches;
 using RoboReglament.Server.Models;
 using RoboReglament.Server.Models.Identity;
-
+using RoboReglament.Server.Services;
 namespace RoboReglament.Server.Controllers;
 
 [ApiController]
@@ -736,24 +736,55 @@ public sealed class MatchesController : ControllerBase
 
             match.Status = MatchStatus.InProgress;
         }
+
         else if (match.Status == MatchStatus.InProgress &&
                  request.Status == MatchStatus.Completed)
         {
             if (discipline.Tournament.Status != TournamentStatus.InProgress)
                 return PreparationClosed();
 
-            if (!await AllProtocolsSubmittedAsync(match))
+            var sideIds = match.MatchGroups
+                .Select(x => x.Id)
+                .ToArray();
+
+            var submittedProtocols = await _db.JudgeProtocols
+                .AsNoTracking()
+                .Include(x => x.Scores)
+                .Where(x =>
+                    sideIds.Contains(x.MatchGroupId) &&
+                    x.Status == JudgeProtocolStatus.Submitted)
+                .ToListAsync();
+
+            try
+            {
+                // Проверяем полноту протоколов и рассчитываем
+                // итог по выбранной системе дисциплины.
+                _ = MatchResultsCalculator.Calculate(
+                    match,
+                    submittedProtocols);
+            }
+            catch (JudgeScoresDisagreeException ex)
             {
                 return Conflict(new
                 {
-                    message =
-                        "Не все назначенные судьи отправили " +
-                        "полные протоколы для каждой стороны."
+                    code = "judge_score_mismatch",
+                    message = ex.Message,
+                    sideId = ex.SideId,
+                    criterionId = ex.CriterionId
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new
+                {
+                    code = "result_calculation_failed",
+                    message = ex.Message
                 });
             }
 
             match.Status = MatchStatus.Completed;
         }
+
         else if (match.Status == MatchStatus.Scheduled &&
                  request.Status == MatchStatus.Cancelled)
         {
@@ -785,15 +816,11 @@ public sealed class MatchesController : ControllerBase
         return Ok(ToResponse(updated!));
     }
 
-    // -------------------------
-    // Вспомогательные методы
-    // -------------------------
-
     private IQueryable<Match> DetailedMatches()
     {
         return _db.Matches
             .Include(x => x.Discipline)
-            .Include(x => x.ProtocolTemplate)
+            .Include(x => x.ProtocolTemplate).ThenInclude(x => x!.Criteria)
             .Include(x => x.MatchGroups)
                 .ThenInclude(x => x.MatchTeams)
                     .ThenInclude(x => x.Team)
@@ -959,50 +986,7 @@ public sealed class MatchesController : ControllerBase
                    side.MatchTeams.Count <= discipline.MaxTeamsPerSide);
     }
 
-    private async Task<bool> AllProtocolsSubmittedAsync(Match match)
-    {
-        if (match.ProtocolTemplateId is null ||
-            match.MatchGroups.Count == 0 ||
-            match.Judges.Count == 0)
-            return false;
-
-        var criteria = await _db.ProtocolCriteria
-            .Where(x => x.ProtocolTemplateId == match.ProtocolTemplateId)
-            .Select(x => x.Id)
-            .ToListAsync();
-
-        if (criteria.Count == 0)
-            return false;
-
-        var criterionIds = criteria.ToHashSet();
-
-        var sideIds = match.MatchGroups
-            .Select(x => x.Id)
-            .ToArray();
-
-        var judgeIds = match.Judges
-            .Select(x => x.JudgeId)
-            .ToArray();
-
-        var submitted = await _db.JudgeProtocols
-            .AsNoTracking()
-            .Include(x => x.Scores)
-            .Where(x =>
-                sideIds.Contains(x.MatchGroupId) &&
-                x.JudgeId != null &&
-                judgeIds.Contains(x.JudgeId) &&
-                x.Status == JudgeProtocolStatus.Submitted)
-            .ToListAsync();
-
-        return sideIds.All(sideId =>
-            judgeIds.All(judgeId =>
-                submitted.Any(protocol =>
-                    protocol.MatchGroupId == sideId &&
-                    protocol.JudgeId == judgeId &&
-                    protocol.Scores.Count == criterionIds.Count &&
-                    protocol.Scores.All(score =>
-                        criterionIds.Contains(score.ProtocolCriterionId)))));
-    }
+   
 
     private static bool CanPrepare(TournamentStatus status)
     {

@@ -33,4 +33,17 @@ public class Discipline
 
     // Максимальное количество команд в одной стороне.
     public int MaxTeamsPerSide { get; set; } = 1;
+
+    public JudgeAggregationMethod JudgeAggregationMethod { get; set; }
+        = JudgeAggregationMethod.Average;
+
+    public RankingMethod RankingMethod { get; set; }
+        = RankingMethod.BestResult;
+
+    public int WinPoints { get; set; } = 3;
+
+    public int DrawPoints { get; set; } = 1;
+
+    public int LossPoints { get; set; } = 0;
+
 }

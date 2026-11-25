@@ -284,6 +284,52 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             )
         )"));
 
+
+        builder.Entity<Discipline>()
+            .Property(x => x.JudgeAggregationMethod)
+            .HasDefaultValue(JudgeAggregationMethod.Average);
+
+        builder.Entity<Discipline>()
+            .ToTable(table => table.HasCheckConstraint(
+                "CK_Disciplines_JudgeAggregationMethod",
+                "[JudgeAggregationMethod] IN (0, 1, 2)"));
+
+
+        builder.Entity<Discipline>()
+            .Property(x => x.RankingMethod)
+            .HasDefaultValue(RankingMethod.BestResult);
+
+        builder.Entity<Discipline>()
+            .ToTable(table => table.HasCheckConstraint(
+                "CK_Disciplines_RankingMethod",
+                @"(
+            ([Format] = 0 AND [RankingMethod] IN (0, 1, 2))
+            OR
+            ([Format] = 1 AND [RankingMethod] = 3)
+        )"));
+
+
+        builder.Entity<Discipline>()
+            .Property(x => x.WinPoints)
+            .HasDefaultValue(3);
+
+        builder.Entity<Discipline>()
+            .Property(x => x.DrawPoints)
+            .HasDefaultValue(1);
+
+        builder.Entity<Discipline>()
+            .Property(x => x.LossPoints)
+            .HasDefaultValue(0);
+
+        builder.Entity<Discipline>()
+            .ToTable(table => table.HasCheckConstraint(
+                "CK_Disciplines_MatchPoints",
+                @"[WinPoints] BETWEEN 0 AND 100
+          AND [DrawPoints] BETWEEN 0 AND 100
+          AND [LossPoints] BETWEEN 0 AND 100
+          AND [WinPoints] > [DrawPoints]
+          AND [DrawPoints] >= [LossPoints]"));
+
         builder.Entity<TournamentApplication>()
             .HasOne(x => x.Discipline)
             .WithMany()
