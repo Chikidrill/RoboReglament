@@ -20,6 +20,14 @@ export interface Discipline {
   sidesPerEvent: number
   minTeamsPerSide: number
   maxTeamsPerSide: number
+
+  judgeAggregationMethod: JudgeAggregationMethod
+  rankingMethod: RankingMethod
+
+  winPoints: number
+  drawPoints: number
+  lossPoints: number
+
 }
 
 
@@ -67,3 +75,14 @@ export interface TournamentOrganizerLookup {
   middleName: string | null
   alreadyOrganizer: boolean
 }
+
+export type JudgeAggregationMethod =
+  | 'Average'
+  | 'Sum'
+  | 'AgreedActual'
+
+export type RankingMethod =
+  | 'BestResult'
+  | 'SumResults'
+  | 'AverageResults'
+  | 'MatchPoints'

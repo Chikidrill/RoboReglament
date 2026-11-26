@@ -1,0 +1,305 @@
+
+/* Публичные результаты */
+
+.results-panel {
+  margin-top: 44px;
+  padding: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: #fff;
+}
+
+.results-panel__heading,
+.competition-review__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+  .results-panel__heading h2 {
+    margin: 0 0 10px;
+    font-size: 24px;
+  }
+
+  .results-panel__heading p,
+  .competition-review__heading p {
+    color: var(--color-muted);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+.results-panel__toolbar {
+  margin: 24px 0;
+}
+
+  .results-panel__toolbar label {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 420px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .results-panel__toolbar select {
+    min-height: 44px;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 9px;
+    background: #fff;
+    color: var(--color-text);
+    font: inherit;
+  }
+
+.results-panel__info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+  .results-panel__info > span {
+    padding: 10px 14px;
+    border-radius: 9px;
+    background: #f4f7fc;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+
+.results-panel__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+  .results-panel__tabs button {
+    padding: 11px 16px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--color-muted);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  .results-panel__tabs .results-panel__tab--active {
+    background: #e9effa;
+    color: var(--color-primary);
+    font-weight: 700;
+  }
+
+.results-panel__empty {
+  padding: 32px 16px;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: var(--color-muted);
+  text-align: center;
+  line-height: 1.6;
+}
+
+.results-panel__table-scroll,
+.competition-review__table-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.results-panel__table,
+.competition-review__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+  .results-panel__table th,
+  .results-panel__table td,
+  .competition-review__table th,
+  .competition-review__table td {
+    padding: 14px 12px;
+    border-bottom: 1px solid var(--color-border);
+    text-align: left;
+    vertical-align: middle;
+  }
+
+  .results-panel__table thead th,
+  .competition-review__table thead th {
+    background: #f5f7fb;
+    color: #66758e;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .results-panel__table th:last-child,
+  .results-panel__table td:last-child {
+    text-align: right;
+  }
+
+.results-panel__leader {
+  background: #f1f8f3;
+}
+
+.results-panel__footnote {
+  margin: 16px 0 0;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.results-panel__match-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.results-panel__match {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+  .results-panel__match summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 18px;
+    cursor: pointer;
+    background: #fafbfd;
+  }
+
+    .results-panel__match summary small {
+      display: block;
+      margin-top: 6px;
+      color: var(--color-muted);
+    }
+
+  .results-panel__match[open] summary {
+    border-bottom: 1px solid var(--color-border);
+  }
+
+/* Проверка протоколов организатором */
+
+.competition-review-entry {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid var(--color-border);
+}
+
+.competition-review {
+  margin-top: 18px;
+  padding: 20px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: #fafbfd;
+}
+
+.competition-review__heading h4,
+.competition-review__heading h5 {
+  margin: 0;
+}
+
+.competition-review__heading h4 {
+  font-size: 18px;
+}
+
+.competition-review__heading h5 {
+  font-size: 15px;
+}
+
+.competition-review__side {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.competition-review__status {
+  padding: 7px 10px;
+  border-radius: 20px;
+  background: #edf1f9;
+  color: #465c80;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.competition-review__status--ready {
+  background: #e8f6ed;
+  color: #237348;
+}
+
+.competition-review__status--error {
+  background: #fff0f0;
+  color: #a92f3b;
+}
+
+.competition-review__mismatch {
+  background: #fff4f2;
+}
+
+  .competition-review__mismatch th span {
+    display: block;
+    margin-top: 5px;
+    color: #b42336;
+    font-size: 11px;
+  }
+
+.competition-review__table td small {
+  display: block;
+  margin-top: 6px;
+  color: var(--color-muted);
+}
+
+.competition-review__reopen {
+  display: block;
+  margin-top: 10px;
+  padding: 6px 10px;
+  border: 1px solid #c6d1e6;
+  border-radius: 7px;
+  background: #fff;
+  color: var(--color-primary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+  .competition-review__reopen:hover {
+    background: #edf2fc;
+  }
+
+  .competition-review__reopen:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+  }
+
+@media (max-width: 700px) {
+  .results-panel {
+    padding: 16px;
+    margin-top: 24px;
+  }
+
+  .results-panel__heading h2 {
+    font-size: 20px;
+  }
+
+  .results-panel__toolbar label {
+    max-width: none;
+  }
+
+  .competition-review {
+    padding: 12px;
+  }
+
+  .competition-review__side {
+    padding: 10px;
+  }
+
+  .results-panel__table,
+  .competition-review__table {
+    min-width: 520px;
+  }
+}

@@ -1,21 +1,18 @@
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
-
 import CoachApplicationPanel from '@/components/tournaments/CoachApplicationPanel.vue'
-
 import { useAuthStore } from '@/stores/auth'
-
 import { getTournamentById } from '@/api/tournaments'
-
 import type { Tournament } from '@/types/tournament'
-
+import TournamentResultsPanel from '@/components/tournaments/TournamentResultsPanel.vue'
 import {
   formatTournamentDateRange,
   formatDateTime,
   getTournamentStatus,
 } from '@/utils/tournament'
+
 
 const route = useRoute()
 
@@ -91,6 +88,23 @@ watch(
   },
   { immediate: true },
 )
+
+  watch(
+    [tournament, () => route.hash],
+    async ([current, hash]) => {
+      if (
+        current &&
+        hash === '#results' &&
+        (current.status === 'InProgress' ||
+          current.status === 'Completed')
+      ) {
+        await nextTick()
+        document.getElementById('results')
+          ?.scrollIntoView({ behavior: 'smooth' })
+      }
+    },
+  )
+
 </script>
 
 <template>
@@ -204,6 +218,16 @@ watch(
 
         </aside>
       </div>
+      
+        <TournamentResultsPanel
+          v-if="
+            tournament.status === 'InProgress' ||
+            tournament.status === 'Completed'
+          "
+          :key="tournament.id"
+          :tournament-id="tournament.id"
+        />
+
     </template>
   </section>
 </template>
