@@ -37,6 +37,7 @@
     EligibleMatchTeam,
     MatchStatus,
     SaveMatchRequest,
+    MatchDrawMode,
   } from '@/types/match'
 
   import type {
@@ -80,7 +81,6 @@
   const success = ref('')
   const reloadVersion = ref(0)
   const reviewMatchId = ref<number | null>(null)
-  // Настройки дисциплины.
 
   const rulesFormat = ref<CompetitionFormat>('Run')
   const rulesScoring = ref<ScoringMode>('PerTeam')
@@ -188,21 +188,60 @@
   const drawTeamsPerSide = ref(1)
   const drawPrefix = ref('Отборочный')
 
+  const drawMode = ref<MatchDrawMode>('FixedAppearances')
+  const drawAppearances = ref(3)
+
   const teamsPerEvent = computed(() =>
     (discipline.value?.sidesPerEvent ?? 0) *
     drawTeamsPerSide.value,
   )
 
-  const canDraw = computed(() =>
-    canPrepare.value &&
-    !busy.value &&
-    !loading.value &&
-    matches.value.length === 0 &&
-    activeTemplates.value.length > 0 &&
-    eligibleTeams.value.length > 0 &&
-    teamsPerEvent.value > 0 &&
-    eligibleTeams.value.length % teamsPerEvent.value === 0,
-  )
+
+  const allUniqueSupported = computed(() => {
+    const current = discipline.value
+    if (!current) return false
+
+    const count = eligibleTeams.value.length
+
+    if (
+      current.format === 'Run' &&
+      current.sidesPerEvent === 1 &&
+      drawTeamsPerSide.value === 1
+    ) return true
+
+    if (
+      current.format === 'Match' &&
+      current.sidesPerEvent === 2
+    ) {
+      return drawTeamsPerSide.value === 1 ||
+        (drawTeamsPerSide.value === 2 && count === 4)
+    }
+
+    return false
+  })
+
+  const canDraw = computed(() => {
+    if (
+      !canPrepare.value ||
+      busy.value ||
+      loading.value ||
+      !activeTemplates.value.length ||
+      !eligibleTeams.value.length ||
+      teamsPerEvent.value <= 0 ||
+      eligibleTeams.value.length < teamsPerEvent.value
+    ) return false
+
+    if (drawMode.value === 'AllUnique') {
+      return allUniqueSupported.value
+    }
+
+    return (
+      Number.isInteger(drawAppearances.value) &&
+      drawAppearances.value >= 1 &&
+      drawAppearances.value <= 30 &&
+      eligibleTeams.value.length % teamsPerEvent.value === 0
+    )
+  })
 
   async function load(
     tournamentId: number,
@@ -524,12 +563,18 @@
     })
   }
 
+
   async function runDraw() {
     const current = discipline.value
     if (!current || !canDraw.value) return
 
+    const description = drawMode.value === 'AllUnique'
+      ? 'все недостающие уникальные встречи'
+      : `до ${drawAppearances.value} выступлений на команду`
+
     if (!window.confirm(
-      `Выполнить жеребьёвку для ${eligibleTeams.value.length} команд?`,
+      `Сформировать ${description}? ` +
+      'Существующие выступления не изменятся.',
     )) return
 
     await execute(async () => {
@@ -540,13 +585,18 @@
           teamsPerSide: drawTeamsPerSide.value,
           protocolTemplateId: null,
           namePrefix: drawPrefix.value.trim() || null,
+          mode: drawMode.value,
+          appearancesPerTeam: drawAppearances.value,
         },
       )
 
-      success.value = `Сформировано выступлений: ${created.length}.`
+      success.value =
+        `Добавлено выступлений: ${created.length}.`
+
       reload()
     })
   }
+
 
   // Судьи и статусы.
 
@@ -872,7 +922,7 @@
               {{ discipline.maxTeamsPerSide }}
             </p>
 
-            
+
             <p>
               <strong>Подсчёт баллов:</strong>
               {{
@@ -915,6 +965,7 @@
 
         <!-- Автоматическая жеребьёвка -->
 
+
         <section v-if="canPrepare" class="competition-box">
           <h3>Автоматическая жеребьёвка</h3>
 
@@ -923,52 +974,101 @@
             <strong>{{ eligibleTeams.length }}</strong>
           </p>
 
-          <div class="competition-grid">
-            <label>
-              Команд в одной стороне
-              <input v-model.number="drawTeamsPerSide"
-                     type="number"
-                     :min="discipline.minTeamsPerSide"
-                     :max="discipline.maxTeamsPerSide"
-                     :disabled="busy || !!matches.length" />
-            </label>
+          <div class="competition-form">
+            <div class="competition-grid">
+              <label>
+                Способ формирования расписания
 
-            <label>
-              Название выступлений
-              <input v-model="drawPrefix"
-                     maxlength="100"
-                     placeholder="Отборочный"
-                     :disabled="busy || !!matches.length" />
-            </label>
-          </div>
+                <select v-model="drawMode" :disabled="busy">
+                  <option value="FixedAppearances">
+                    Заданное число выступлений на команду
+                  </option>
 
-          <p>
-            Команд на выступление: {{ teamsPerEvent }}.
-            Каждая команда участвует в жеребьёвке один раз.
-          </p>
+                  <option value="AllUnique">
+                    Все уникальные встречи
+                  </option>
+                </select>
+              </label>
 
-          <p v-if="matches.length">
-            Повторная жеребьёвка недоступна:
-            в дисциплине уже есть выступления.
-          </p>
+              <label>
+                Команд в одной стороне
 
-          <p v-else-if="
-             eligibleTeams.length &&
-             teamsPerEvent>
-            0 &&
-            eligibleTeams.length % teamsPerEvent !== 0
-            ">
-            Количество команд не делится на размер выступления
-            без остатка. Измените размер или состав участников.
-          </p>
+                <input v-model.number="drawTeamsPerSide"
+                       type="number"
+                       :min="discipline.minTeamsPerSide"
+                       :max="discipline.maxTeamsPerSide"
+                       :disabled="busy" />
+              </label>
 
-          <div class="organizer-actions">
-            <button type="button"
-                    class="btn btn-primary"
-                    :disabled="!canDraw"
-                    @click="runDraw">
-              Провести жеребьёвку
-            </button>
+              <label v-if="drawMode === 'FixedAppearances'">
+                Выступлений на команду (всего)
+
+                <input v-model.number="drawAppearances"
+                       type="number"
+                       min="1"
+                       max="30"
+                       step="1"
+                       :disabled="busy" />
+              </label>
+
+              <label>
+                Название выступлений
+
+                <input v-model="drawPrefix"
+                       maxlength="100"
+                       placeholder="Отборочный"
+                       :disabled="busy" />
+              </label>
+            </div>
+
+            <p>
+              Команд на одно выступление:
+              <strong>{{ teamsPerEvent }}</strong>.
+            </p>
+
+            <p v-if="matches.length">
+              Уже создано выступлений:
+              <strong>{{ matches.length }}</strong>.
+              Они сохранятся без изменений.
+            </p>
+
+            <p v-if="drawMode === 'FixedAppearances'">
+              Указанное количество включает ранее
+              созданные выступления. Система добавит
+              только недостающие.
+            </p>
+
+            <p v-if="
+        drawMode === 'AllUnique' &&
+        !allUniqueSupported
+      "
+               class="organizer-error">
+              Для этой конфигурации полный перебор
+              пока не поддерживается. Выберите
+              заданное количество выступлений.
+            </p>
+
+            <p v-if="
+               drawMode ==='FixedAppearances' &&
+               teamsPerEvent>
+              0 &&
+              eligibleTeams.length % teamsPerEvent !== 0
+              "
+              class="organizer-error"
+              >
+              Для равномерного распределения количество
+              команд должно делиться на число мест
+              в одном выступлении.
+            </p>
+
+            <div class="organizer-actions">
+              <button type="button"
+                      class="btn btn-primary"
+                      :disabled="!canDraw"
+                      @click="runDraw">
+                Сформировать расписание
+              </button>
+            </div>
           </div>
         </section>
 
@@ -1286,22 +1386,18 @@
                 Завершить выступление
               </button>
             </div>
-            
-            <div
-              v-if="
+
+            <div v-if="
                 match.status === 'InProgress' ||
                 match.status === 'Completed'
               "
-              class="competition-review-entry"
-            >
-              <button
-                type="button"
-                class="btn btn-outline"
-                @click="
+                 class="competition-review-entry">
+              <button type="button"
+                      class="btn btn-outline"
+                      @click="
                   reviewMatchId =
                     reviewMatchId === match.id ? null : match.id
-                "
-              >
+                ">
                 {{
                   reviewMatchId === match.id
                     ? 'Скрыть протоколы'
@@ -1309,17 +1405,15 @@
                 }}
               </button>
 
-              <CompetitionProtocolReview
-                v-if="reviewMatchId === match.id"
-                :key="match.id"
-                :tournament-id="tournament.id"
-                :discipline-id="discipline.id"
-                :match-id="match.id"
-                :editable="
+              <CompetitionProtocolReview v-if="reviewMatchId === match.id"
+                                         :key="match.id"
+                                         :tournament-id="tournament.id"
+                                         :discipline-id="discipline.id"
+                                         :match-id="match.id"
+                                         :editable="
                   tournament.status === 'InProgress' &&
                   match.status === 'InProgress'
-                "
-              />
+                " />
             </div>
 
           </article>
