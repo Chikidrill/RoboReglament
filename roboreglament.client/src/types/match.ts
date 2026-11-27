@@ -74,4 +74,10 @@ export interface DrawMatchesRequest {
   teamsPerSide: number
   protocolTemplateId: number | null
   namePrefix: string | null
+  mode: MatchDrawMode
+  appearancesPerTeam: number
 }
+
+export type MatchDrawMode =
+  | 'FixedAppearances'
+  | 'AllUnique'

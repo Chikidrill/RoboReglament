@@ -10,7 +10,7 @@ using RoboReglament.Server.Data;
 using RoboReglament.Server.DTOs.Matches;
 using RoboReglament.Server.Models;
 using RoboReglament.Server.Models.Identity;
-
+using RoboReglament.Server.Services;
 namespace RoboReglament.Server.Controllers;
 
 [ApiController]
@@ -368,7 +368,7 @@ public sealed class MatchesController : ControllerBase
         return NoContent();
     }
 
-    // Случайная жеребьёвка аккредитованных команд.
+
     [HttpPost("draw")]
     [Authorize(Roles = UserRoles.Organizer)]
     public async Task<IActionResult> Draw(
@@ -384,39 +384,40 @@ public sealed class MatchesController : ControllerBase
             tournamentId, disciplineId);
 
         if (discipline is null)
-            return NotFound(new { message = "Дисциплина недоступна." });
+            return NotFound(new
+            {
+                message = "Дисциплина недоступна."
+            });
 
         if (!CanPrepare(discipline.Tournament.Status))
             return PreparationClosed();
 
         if (!request.TeamsPerSide.HasValue ||
-            request.TeamsPerSide.Value < discipline.MinTeamsPerSide ||
-            request.TeamsPerSide.Value > discipline.MaxTeamsPerSide)
+            request.TeamsPerSide.Value <
+                discipline.MinTeamsPerSide ||
+            request.TeamsPerSide.Value >
+                discipline.MaxTeamsPerSide)
         {
             return BadRequest(new
             {
-                message = "Количество команд в стороне не соответствует правилам дисциплины."
-            });
-        }
-
-        if (await _db.Matches.AnyAsync(x =>
-            x.TournamentId == tournamentId &&
-            x.DisciplineId == disciplineId))
-        {
-            return Conflict(new
-            {
-                message = "В дисциплине уже есть выступления. Повторная жеребьёвка запрещена."
+                message =
+                    "Количество команд в стороне " +
+                    "не соответствует правилам дисциплины."
             });
         }
 
         var template = await ResolveTemplateAsync(
-            tournamentId, disciplineId, request.ProtocolTemplateId);
+            tournamentId,
+            disciplineId,
+            request.ProtocolTemplateId);
 
         if (template is null)
         {
             return Conflict(new
             {
-                message = "Сначала создайте активный шаблон протокола."
+                message =
+                    "Сначала создайте активный " +
+                    "шаблон судейского протокола."
             });
         }
 
@@ -429,77 +430,97 @@ public sealed class MatchesController : ControllerBase
                 x.Accreditation.IsAccredited)
             .Select(x => x.TeamId)
             .Distinct()
+            .OrderBy(x => x)
             .ToListAsync();
 
-        var teamsPerSide = request.TeamsPerSide.Value;
-        var teamsPerEvent = discipline.SidesPerEvent * teamsPerSide;
+        // Загружаем существующие выступления.
+        // Отменённые не учитываем при формировании сетки.
+        var existingMatches = await _db.Matches
+            .AsNoTracking()
+            .Where(x =>
+                x.TournamentId == tournamentId &&
+                x.DisciplineId == disciplineId &&
+                x.Status != MatchStatus.Cancelled)
+            .Include(x => x.MatchGroups)
+                .ThenInclude(x => x.MatchTeams)
+            .AsSplitQuery()
+            .ToListAsync();
 
-        if (teamIds.Count == 0)
-            return Conflict(new { message = "Нет аккредитованных команд." });
+        var existingFixtures = existingMatches
+            .Select(match => match.MatchGroups
+                .OrderBy(side => side.Number)
+                .Select(side => side.MatchTeams
+                    .Select(team => team.TeamId)
+                    .ToArray())
+                .ToArray())
+            .ToList();
 
-        if (teamIds.Count % teamsPerEvent != 0)
+        List<int[][]> fixtures;
+
+        try
         {
-            return Conflict(new
-            {
-                message =
-                    $"Аккредитовано {teamIds.Count} команд. " +
-                    $"Для выбранного формата нужно количество, " +
-                    $"кратное {teamsPerEvent}. " +
-                    "Жеребьёвка не выполнена."
-            });
+            fixtures = MatchDrawGenerator.Generate(
+                discipline.Format,
+                discipline.SidesPerEvent,
+                request.TeamsPerSide.Value,
+                teamIds,
+                existingFixtures,
+                request.Mode,
+                request.AppearancesPerTeam);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
         }
 
-        // Алгоритм Фишера — Йетса.
-        for (var i = teamIds.Count - 1; i > 0; i--)
-        {
-            var j = RandomNumberGenerator.GetInt32(i + 1);
-            (teamIds[i], teamIds[j]) = (teamIds[j], teamIds[i]);
-        }
+        var lastNumber = await _db.Matches
+            .Where(x =>
+                x.TournamentId == tournamentId &&
+                x.DisciplineId == disciplineId)
+            .MaxAsync(x => (int?)x.Number) ?? 0;
 
         var prefix = Normalize(request.NamePrefix)
             ?? (discipline.Format == CompetitionFormat.Run
                 ? "Заезд"
                 : "Матч");
 
-        var matches = new List<Match>();
-        var number = 1;
+        var createdMatches = new List<Match>();
 
-        foreach (var block in teamIds.Chunk(teamsPerEvent))
+        foreach (var fixture in fixtures)
         {
-            var sides = new List<SaveMatchSideRequest>();
+            var sides = fixture
+                .Select((teamIdsInSide, index) =>
+                    new SaveMatchSideRequest
+                    {
+                        Name =
+                            discipline.ScoringMode ==
+                            ScoringMode.PerAlliance
+                                ? $"Союз №{index + 1}"
+                                : $"Сторона №{index + 1}",
 
-            for (var sideIndex = 0;
-                 sideIndex < discipline.SidesPerEvent;
-                 sideIndex++)
-            {
-                sides.Add(new SaveMatchSideRequest
-                {
-                    Name = discipline.ScoringMode == ScoringMode.PerAlliance
-                        ? $"Союз №{sideIndex + 1}"
-                        : $"Сторона №{sideIndex + 1}",
+                        TeamIds = teamIdsInSide.ToList()
+                    })
+                .ToList();
 
-                    TeamIds = block
-                        .Skip(sideIndex * teamsPerSide)
-                        .Take(teamsPerSide)
-                        .ToList()
-                });
-            }
+            lastNumber++;
 
-            matches.Add(new Match
+            createdMatches.Add(new Match
             {
                 TournamentId = tournamentId,
                 DisciplineId = disciplineId,
-                Number = number,
-                Name = $"{prefix} №{number}",
+                Number = lastNumber,
+                Name = $"{prefix} №{lastNumber}",
                 Status = MatchStatus.Scheduled,
                 ProtocolTemplateId = template.Id,
                 MatchGroups = BuildSides(sides)
             });
-
-            number++;
         }
 
-        _db.Matches.AddRange(matches);
+        _db.Matches.AddRange(createdMatches);
 
         try
         {
@@ -510,20 +531,25 @@ public sealed class MatchesController : ControllerBase
         {
             return Conflict(new
             {
-                message = "Конкурентное изменение жеребьёвки."
+                message =
+                    "Расписание уже изменилось. " +
+                    "Обновите страницу и повторите действие."
             });
         }
 
-        var ids = matches.Select(x => x.Id).ToArray();
+        var createdIds = createdMatches
+            .Select(x => x.Id)
+            .ToArray();
 
         var created = await DetailedMatches()
             .AsNoTracking()
-            .Where(x => ids.Contains(x.Id))
+            .Where(x => createdIds.Contains(x.Id))
             .OrderBy(x => x.Number)
             .ToListAsync();
 
         return Ok(created.Select(ToResponse));
     }
+
 
     // Назначение судьи по публичному ID.
     [HttpPost("{matchId:int}/judges")]
@@ -736,24 +762,55 @@ public sealed class MatchesController : ControllerBase
 
             match.Status = MatchStatus.InProgress;
         }
+
         else if (match.Status == MatchStatus.InProgress &&
                  request.Status == MatchStatus.Completed)
         {
             if (discipline.Tournament.Status != TournamentStatus.InProgress)
                 return PreparationClosed();
 
-            if (!await AllProtocolsSubmittedAsync(match))
+            var sideIds = match.MatchGroups
+                .Select(x => x.Id)
+                .ToArray();
+
+            var submittedProtocols = await _db.JudgeProtocols
+                .AsNoTracking()
+                .Include(x => x.Scores)
+                .Where(x =>
+                    sideIds.Contains(x.MatchGroupId) &&
+                    x.Status == JudgeProtocolStatus.Submitted)
+                .ToListAsync();
+
+            try
+            {
+                // Проверяем полноту протоколов и рассчитываем
+                // итог по выбранной системе дисциплины.
+                _ = MatchResultsCalculator.Calculate(
+                    match,
+                    submittedProtocols);
+            }
+            catch (JudgeScoresDisagreeException ex)
             {
                 return Conflict(new
                 {
-                    message =
-                        "Не все назначенные судьи отправили " +
-                        "полные протоколы для каждой стороны."
+                    code = "judge_score_mismatch",
+                    message = ex.Message,
+                    sideId = ex.SideId,
+                    criterionId = ex.CriterionId
+                });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new
+                {
+                    code = "result_calculation_failed",
+                    message = ex.Message
                 });
             }
 
             match.Status = MatchStatus.Completed;
         }
+
         else if (match.Status == MatchStatus.Scheduled &&
                  request.Status == MatchStatus.Cancelled)
         {
@@ -785,15 +842,11 @@ public sealed class MatchesController : ControllerBase
         return Ok(ToResponse(updated!));
     }
 
-    // -------------------------
-    // Вспомогательные методы
-    // -------------------------
-
     private IQueryable<Match> DetailedMatches()
     {
         return _db.Matches
             .Include(x => x.Discipline)
-            .Include(x => x.ProtocolTemplate)
+            .Include(x => x.ProtocolTemplate).ThenInclude(x => x!.Criteria)
             .Include(x => x.MatchGroups)
                 .ThenInclude(x => x.MatchTeams)
                     .ThenInclude(x => x.Team)
@@ -959,50 +1012,7 @@ public sealed class MatchesController : ControllerBase
                    side.MatchTeams.Count <= discipline.MaxTeamsPerSide);
     }
 
-    private async Task<bool> AllProtocolsSubmittedAsync(Match match)
-    {
-        if (match.ProtocolTemplateId is null ||
-            match.MatchGroups.Count == 0 ||
-            match.Judges.Count == 0)
-            return false;
-
-        var criteria = await _db.ProtocolCriteria
-            .Where(x => x.ProtocolTemplateId == match.ProtocolTemplateId)
-            .Select(x => x.Id)
-            .ToListAsync();
-
-        if (criteria.Count == 0)
-            return false;
-
-        var criterionIds = criteria.ToHashSet();
-
-        var sideIds = match.MatchGroups
-            .Select(x => x.Id)
-            .ToArray();
-
-        var judgeIds = match.Judges
-            .Select(x => x.JudgeId)
-            .ToArray();
-
-        var submitted = await _db.JudgeProtocols
-            .AsNoTracking()
-            .Include(x => x.Scores)
-            .Where(x =>
-                sideIds.Contains(x.MatchGroupId) &&
-                x.JudgeId != null &&
-                judgeIds.Contains(x.JudgeId) &&
-                x.Status == JudgeProtocolStatus.Submitted)
-            .ToListAsync();
-
-        return sideIds.All(sideId =>
-            judgeIds.All(judgeId =>
-                submitted.Any(protocol =>
-                    protocol.MatchGroupId == sideId &&
-                    protocol.JudgeId == judgeId &&
-                    protocol.Scores.Count == criterionIds.Count &&
-                    protocol.Scores.All(score =>
-                        criterionIds.Contains(score.ProtocolCriterionId)))));
-    }
+   
 
     private static bool CanPrepare(TournamentStatus status)
     {

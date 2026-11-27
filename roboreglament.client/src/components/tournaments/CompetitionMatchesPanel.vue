@@ -1,7 +1,8 @@
 
 <script setup lang="ts">
   import { computed, ref, watch } from 'vue'
-
+  import CompetitionProtocolReview
+    from '@/components/tournaments/CompetitionProtocolReview.vue'
   import {
     getMatches,
     getEligibleMatchTeams,
@@ -27,6 +28,8 @@
     Discipline,
     CompetitionFormat,
     ScoringMode,
+    JudgeAggregationMethod,
+    RankingMethod
   } from '@/types/tournament'
 
   import type {
@@ -34,6 +37,7 @@
     EligibleMatchTeam,
     MatchStatus,
     SaveMatchRequest,
+    MatchDrawMode,
   } from '@/types/match'
 
   import type {
@@ -76,26 +80,68 @@
   const error = ref('')
   const success = ref('')
   const reloadVersion = ref(0)
-
-  // Настройки дисциплины.
+  const reviewMatchId = ref<number | null>(null)
 
   const rulesFormat = ref<CompetitionFormat>('Run')
   const rulesScoring = ref<ScoringMode>('PerTeam')
   const rulesSides = ref(1)
+
+  const rulesAggregation =
+    ref<JudgeAggregationMethod>('Average')
+
+  const rulesRanking =
+    ref<RankingMethod>('BestResult')
+
+  const rulesWinPoints = ref(3)
+  const rulesDrawPoints = ref(1)
+  const rulesLossPoints = ref(0)
+
   const rulesMin = ref(1)
   const rulesMax = ref(1)
 
-  const rulesValid = computed(() =>
-    rulesSides.value >= (rulesFormat.value === 'Run' ? 1 : 2) &&
-    rulesSides.value <= (rulesFormat.value === 'Run' ? 1 : 4) &&
-    rulesMin.value >= (rulesScoring.value === 'PerAlliance' ? 2 : 1) &&
-    rulesMin.value <= rulesMax.value &&
-    rulesMax.value <= 4 &&
-    (rulesScoring.value !== 'PerTeam' || rulesMax.value === 1),
-  )
+
+  const rulesValid = computed(() => {
+    const basicValid =
+      rulesSides.value >=
+      (rulesFormat.value === 'Run' ? 1 : 2) &&
+      rulesSides.value <=
+      (rulesFormat.value === 'Run' ? 1 : 4) &&
+      rulesMin.value >=
+      (rulesScoring.value === 'PerAlliance' ? 2 : 1) &&
+      rulesMin.value <= rulesMax.value &&
+      rulesMax.value <= 4 &&
+      (rulesScoring.value !== 'PerTeam' ||
+        rulesMax.value === 1)
+
+    const rankingValid =
+      rulesFormat.value === 'Run'
+        ? rulesRanking.value !== 'MatchPoints'
+        : rulesRanking.value === 'MatchPoints'
+
+    const points = [
+      rulesWinPoints.value,
+      rulesDrawPoints.value,
+      rulesLossPoints.value,
+    ]
+
+    const pointsValid =
+      points.every(value =>
+        Number.isInteger(value) &&
+        value >= 0 &&
+        value <= 100
+      ) &&
+      rulesWinPoints.value > rulesDrawPoints.value &&
+      rulesDrawPoints.value >= rulesLossPoints.value
+
+    return basicValid && rankingValid && pointsValid
+  })
+
 
   function onFormatChange() {
     rulesSides.value = rulesFormat.value === 'Run' ? 1 : 2
+    rulesRanking.value = rulesFormat.value === 'Match'
+      ? 'MatchPoints'
+      : 'BestResult'
   }
 
   function onScoringChange() {
@@ -117,6 +163,12 @@
           sidesPerEvent: rulesSides.value,
           minTeamsPerSide: rulesMin.value,
           maxTeamsPerSide: rulesMax.value,
+          judgeAggregationMethod: rulesAggregation.value,
+          rankingMethod: rulesRanking.value,
+          winPoints: rulesWinPoints.value,
+          drawPoints: rulesDrawPoints.value,
+          lossPoints: rulesLossPoints.value,
+
         },
       )
 
@@ -136,21 +188,60 @@
   const drawTeamsPerSide = ref(1)
   const drawPrefix = ref('Отборочный')
 
+  const drawMode = ref<MatchDrawMode>('FixedAppearances')
+  const drawAppearances = ref(3)
+
   const teamsPerEvent = computed(() =>
     (discipline.value?.sidesPerEvent ?? 0) *
     drawTeamsPerSide.value,
   )
 
-  const canDraw = computed(() =>
-    canPrepare.value &&
-    !busy.value &&
-    !loading.value &&
-    matches.value.length === 0 &&
-    activeTemplates.value.length > 0 &&
-    eligibleTeams.value.length > 0 &&
-    teamsPerEvent.value > 0 &&
-    eligibleTeams.value.length % teamsPerEvent.value === 0,
-  )
+
+  const allUniqueSupported = computed(() => {
+    const current = discipline.value
+    if (!current) return false
+
+    const count = eligibleTeams.value.length
+
+    if (
+      current.format === 'Run' &&
+      current.sidesPerEvent === 1 &&
+      drawTeamsPerSide.value === 1
+    ) return true
+
+    if (
+      current.format === 'Match' &&
+      current.sidesPerEvent === 2
+    ) {
+      return drawTeamsPerSide.value === 1 ||
+        (drawTeamsPerSide.value === 2 && count === 4)
+    }
+
+    return false
+  })
+
+  const canDraw = computed(() => {
+    if (
+      !canPrepare.value ||
+      busy.value ||
+      loading.value ||
+      !activeTemplates.value.length ||
+      !eligibleTeams.value.length ||
+      teamsPerEvent.value <= 0 ||
+      eligibleTeams.value.length < teamsPerEvent.value
+    ) return false
+
+    if (drawMode.value === 'AllUnique') {
+      return allUniqueSupported.value
+    }
+
+    return (
+      Number.isInteger(drawAppearances.value) &&
+      drawAppearances.value >= 1 &&
+      drawAppearances.value <= 30 &&
+      eligibleTeams.value.length % teamsPerEvent.value === 0
+    )
+  })
 
   async function load(
     tournamentId: number,
@@ -233,6 +324,14 @@
       rulesMax.value = current.maxTeamsPerSide
 
       drawTeamsPerSide.value = current.minTeamsPerSide
+
+      rulesAggregation.value = current.judgeAggregationMethod
+      rulesRanking.value = current.rankingMethod
+
+      rulesWinPoints.value = current.winPoints
+      rulesDrawPoints.value = current.drawPoints
+      rulesLossPoints.value = current.lossPoints
+
     },
     { immediate: true },
   )
@@ -464,12 +563,18 @@
     })
   }
 
+
   async function runDraw() {
     const current = discipline.value
     if (!current || !canDraw.value) return
 
+    const description = drawMode.value === 'AllUnique'
+      ? 'все недостающие уникальные встречи'
+      : `до ${drawAppearances.value} выступлений на команду`
+
     if (!window.confirm(
-      `Выполнить жеребьёвку для ${eligibleTeams.value.length} команд?`,
+      `Сформировать ${description}? ` +
+      'Существующие выступления не изменятся.',
     )) return
 
     await execute(async () => {
@@ -480,13 +585,18 @@
           teamsPerSide: drawTeamsPerSide.value,
           protocolTemplateId: null,
           namePrefix: drawPrefix.value.trim() || null,
+          mode: drawMode.value,
+          appearancesPerTeam: drawAppearances.value,
         },
       )
 
-      success.value = `Сформировано выступлений: ${created.length}.`
+      success.value =
+        `Добавлено выступлений: ${created.length}.`
+
       reload()
     })
   }
+
 
   // Судьи и статусы.
 
@@ -699,6 +809,77 @@
                        :max="rulesScoring === 'PerAlliance' ? 4 : 1"
                        :disabled="busy || rulesScoring === 'PerTeam'" />
               </label>
+
+              <label>
+                Подсчёт судейских баллов
+
+                <select v-model="rulesAggregation" :disabled="busy">
+                  <option value="Average">
+                    Среднее арифметическое
+                  </option>
+                  <option value="Sum">
+                    Сумма баллов судей
+                  </option>
+                  <option value="AgreedActual">
+                    Фактически набранные баллы
+                  </option>
+                </select>
+              </label>
+
+              <label>
+                Формирование рейтинга
+
+                <select v-model="rulesRanking" :disabled="busy">
+                  <template v-if="rulesFormat === 'Run'">
+                    <option value="BestResult">
+                      Лучший результат
+                    </option>
+                    <option value="SumResults">
+                      Сумма результатов
+                    </option>
+                    <option value="AverageResults">
+                      Среднее результатов
+                    </option>
+                  </template>
+
+                  <option v-else value="MatchPoints">
+                    Турнирные очки за матчи
+                  </option>
+                </select>
+              </label>
+
+              <template v-if="rulesFormat === 'Match'">
+                <label>
+                  Очки за победу
+                  <input v-model.number="rulesWinPoints"
+                         type="number"
+                         min="0"
+                         max="100"
+                         step="1"
+                         :disabled="busy" />
+                </label>
+
+                <label>
+                  Очки за ничью
+                  <input v-model.number="rulesDrawPoints"
+                         type="number"
+                         min="0"
+                         max="100"
+                         step="1"
+                         :disabled="busy" />
+                </label>
+
+                <label>
+                  Очки за поражение
+                  <input v-model.number="rulesLossPoints"
+                         type="number"
+                         min="0"
+                         max="100"
+                         step="1"
+                         :disabled="busy" />
+                </label>
+              </template>
+
             </div>
 
             <div class="organizer-actions">
@@ -740,6 +921,39 @@
               {{ discipline.minTeamsPerSide }}–
               {{ discipline.maxTeamsPerSide }}
             </p>
+
+
+            <p>
+              <strong>Подсчёт баллов:</strong>
+              {{
+                discipline.judgeAggregationMethod === 'Average'
+                  ? 'Среднее арифметическое'
+                  : discipline.judgeAggregationMethod === 'Sum'
+                    ? 'Сумма баллов судей'
+                    : 'Фактически набранные баллы'
+              }}
+            </p>
+
+            <p>
+              <strong>Рейтинг:</strong>
+              {{
+                discipline.rankingMethod === 'BestResult'
+                  ? 'Лучший результат'
+                  : discipline.rankingMethod === 'SumResults'
+                    ? 'Сумма результатов'
+                    : discipline.rankingMethod === 'AverageResults'
+                      ? 'Среднее результатов'
+                      : 'Турнирные очки'
+              }}
+            </p>
+
+            <p v-if="discipline.format === 'Match'">
+              <strong>Очки (победа / ничья / поражение):</strong>
+              {{ discipline.winPoints }} /
+              {{ discipline.drawPoints }} /
+              {{ discipline.lossPoints }}
+            </p>
+
           </div>
         </section>
 
@@ -751,6 +965,7 @@
 
         <!-- Автоматическая жеребьёвка -->
 
+
         <section v-if="canPrepare" class="competition-box">
           <h3>Автоматическая жеребьёвка</h3>
 
@@ -759,52 +974,101 @@
             <strong>{{ eligibleTeams.length }}</strong>
           </p>
 
-          <div class="competition-grid">
-            <label>
-              Команд в одной стороне
-              <input v-model.number="drawTeamsPerSide"
-                     type="number"
-                     :min="discipline.minTeamsPerSide"
-                     :max="discipline.maxTeamsPerSide"
-                     :disabled="busy || !!matches.length" />
-            </label>
+          <div class="competition-form">
+            <div class="competition-grid">
+              <label>
+                Способ формирования расписания
 
-            <label>
-              Название выступлений
-              <input v-model="drawPrefix"
-                     maxlength="100"
-                     placeholder="Отборочный"
-                     :disabled="busy || !!matches.length" />
-            </label>
-          </div>
+                <select v-model="drawMode" :disabled="busy">
+                  <option value="FixedAppearances">
+                    Заданное число выступлений на команду
+                  </option>
 
-          <p>
-            Команд на выступление: {{ teamsPerEvent }}.
-            Каждая команда участвует в жеребьёвке один раз.
-          </p>
+                  <option value="AllUnique">
+                    Все уникальные встречи
+                  </option>
+                </select>
+              </label>
 
-          <p v-if="matches.length">
-            Повторная жеребьёвка недоступна:
-            в дисциплине уже есть выступления.
-          </p>
+              <label>
+                Команд в одной стороне
 
-          <p v-else-if="
-             eligibleTeams.length &&
-             teamsPerEvent>
-            0 &&
-            eligibleTeams.length % teamsPerEvent !== 0
-            ">
-            Количество команд не делится на размер выступления
-            без остатка. Измените размер или состав участников.
-          </p>
+                <input v-model.number="drawTeamsPerSide"
+                       type="number"
+                       :min="discipline.minTeamsPerSide"
+                       :max="discipline.maxTeamsPerSide"
+                       :disabled="busy" />
+              </label>
 
-          <div class="organizer-actions">
-            <button type="button"
-                    class="btn btn-primary"
-                    :disabled="!canDraw"
-                    @click="runDraw">
-              Провести жеребьёвку
-            </button>
+              <label v-if="drawMode === 'FixedAppearances'">
+                Выступлений на команду (всего)
+
+                <input v-model.number="drawAppearances"
+                       type="number"
+                       min="1"
+                       max="30"
+                       step="1"
+                       :disabled="busy" />
+              </label>
+
+              <label>
+                Название выступлений
+
+                <input v-model="drawPrefix"
+                       maxlength="100"
+                       placeholder="Отборочный"
+                       :disabled="busy" />
+              </label>
+            </div>
+
+            <p>
+              Команд на одно выступление:
+              <strong>{{ teamsPerEvent }}</strong>.
+            </p>
+
+            <p v-if="matches.length">
+              Уже создано выступлений:
+              <strong>{{ matches.length }}</strong>.
+              Они сохранятся без изменений.
+            </p>
+
+            <p v-if="drawMode === 'FixedAppearances'">
+              Указанное количество включает ранее
+              созданные выступления. Система добавит
+              только недостающие.
+            </p>
+
+            <p v-if="
+        drawMode === 'AllUnique' &&
+        !allUniqueSupported
+      "
+               class="organizer-error">
+              Для этой конфигурации полный перебор
+              пока не поддерживается. Выберите
+              заданное количество выступлений.
+            </p>
+
+            <p v-if="
+               drawMode ==='FixedAppearances' &&
+               teamsPerEvent>
+              0 &&
+              eligibleTeams.length % teamsPerEvent !== 0
+              "
+              class="organizer-error"
+              >
+              Для равномерного распределения количество
+              команд должно делиться на число мест
+              в одном выступлении.
+            </p>
+
+            <div class="organizer-actions">
+              <button type="button"
+                      class="btn btn-primary"
+                      :disabled="!canDraw"
+                      @click="runDraw">
+                Сформировать расписание
+              </button>
+            </div>
           </div>
         </section>
 
@@ -1122,6 +1386,36 @@
                 Завершить выступление
               </button>
             </div>
+
+            <div v-if="
+                match.status === 'InProgress' ||
+                match.status === 'Completed'
+              "
+                 class="competition-review-entry">
+              <button type="button"
+                      class="btn btn-outline"
+                      @click="
+                  reviewMatchId =
+                    reviewMatchId === match.id ? null : match.id
+                ">
+                {{
+                  reviewMatchId === match.id
+                    ? 'Скрыть протоколы'
+                    : 'Проверить протоколы судей'
+                }}
+              </button>
+
+              <CompetitionProtocolReview v-if="reviewMatchId === match.id"
+                                         :key="match.id"
+                                         :tournament-id="tournament.id"
+                                         :discipline-id="discipline.id"
+                                         :match-id="match.id"
+                                         :editable="
+                  tournament.status === 'InProgress' &&
+                  match.status === 'InProgress'
+                " />
+            </div>
+
           </article>
         </div>
       </template>

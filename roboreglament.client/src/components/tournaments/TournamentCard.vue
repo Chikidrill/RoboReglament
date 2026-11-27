@@ -75,6 +75,22 @@ const monthLabel = computed(() =>
                     class="tournament-card__link">
           Подробнее →
         </RouterLink>
+        
+        <RouterLink
+          v-if="
+            tournament.status === 'InProgress' ||
+            tournament.status === 'Completed'
+          "
+          :to="{
+            name: 'tournament-details',
+            params: { id: tournament.id },
+            hash: '#results',
+          }"
+          class="tournament-card__link"
+        >
+          Результаты
+        </RouterLink>
+
       </div>
     </div>
   </article>

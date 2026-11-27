@@ -95,9 +95,7 @@ public class DisciplinesController : ControllerBase
         int disciplineId,
         DisciplineRulesRequest request)
     {
-        // Проверка прав организатора.
-        // Метод также запрещает изменения
-        // после открытия регистрации.
+
         var error = await CheckAccessAsync(tournamentId);
 
         if (error is not null)
@@ -117,6 +115,73 @@ public class DisciplinesController : ControllerBase
         }
 
         var validationError = ValidateRules(request);
+
+        // Если старый клиент не передал RankingMethod,
+        // сохраняем текущий вариант при том же формате.
+        // При смене формата выбираем совместимый вариант.
+        var requestedFormat = request.Format!.Value;
+
+        var rankingMethod = request.RankingMethod ??
+            (discipline.Format == requestedFormat
+                ? discipline.RankingMethod
+                : requestedFormat == CompetitionFormat.Match
+                    ? RankingMethod.MatchPoints
+                    : RankingMethod.BestResult);
+
+        if (!Enum.IsDefined(rankingMethod))
+        {
+            return BadRequest(new
+            {
+                message = "Недопустимый способ формирования рейтинга."
+            });
+        }
+
+        if (requestedFormat == CompetitionFormat.Run &&
+            rankingMethod == RankingMethod.MatchPoints)
+        {
+            return BadRequest(new
+            {
+                message =
+                    "Турнирные очки применяются только к матчам."
+            });
+        }
+
+        if (requestedFormat == CompetitionFormat.Match &&
+            rankingMethod != RankingMethod.MatchPoints)
+        {
+            return BadRequest(new
+            {
+                message =
+                    "Для матчей выберите рейтинг по турнирным очкам."
+            });
+        }
+
+
+        var winPoints = request.WinPoints ?? discipline.WinPoints;
+        var drawPoints = request.DrawPoints ?? discipline.DrawPoints;
+        var lossPoints = request.LossPoints ?? discipline.LossPoints;
+
+        if (winPoints is < 0 or > 100 ||
+            drawPoints is < 0 or > 100 ||
+            lossPoints is < 0 or > 100)
+        {
+            return BadRequest(new
+            {
+                message = "Турнирные очки должны быть от 0 до 100."
+            });
+        }
+
+        if (winPoints <= drawPoints || drawPoints < lossPoints)
+        {
+            return BadRequest(new
+            {
+                message =
+                    "Очки за победу должны быть больше очков " +
+                    "за ничью, а очки за ничью — не меньше " +
+                    "очков за поражение."
+            });
+        }
+
 
         if (validationError is not null)
         {
@@ -145,10 +210,14 @@ public class DisciplinesController : ControllerBase
 
         discipline.Format = request.Format!.Value;
         discipline.ScoringMode = request.ScoringMode!.Value;
+        discipline.JudgeAggregationMethod = request.JudgeAggregationMethod!.Value;
         discipline.SidesPerEvent = request.SidesPerEvent;
         discipline.MinTeamsPerSide = request.MinTeamsPerSide;
         discipline.MaxTeamsPerSide = request.MaxTeamsPerSide;
-
+        discipline.RankingMethod = rankingMethod;
+        discipline.WinPoints = winPoints;
+        discipline.DrawPoints = drawPoints;
+        discipline.LossPoints = lossPoints;
         await _context.SaveChangesAsync();
 
         return Ok(ToResponse(discipline));
@@ -209,6 +278,14 @@ public class DisciplinesController : ControllerBase
             request.MinTeamsPerSide < 2)
         {
             return "Союз должен состоять минимум из двух команд.";
+        }
+
+        if (!request.JudgeAggregationMethod.HasValue ||
+            !Enum.IsDefined(
+                typeof(JudgeAggregationMethod),
+                request.JudgeAggregationMethod.Value))
+        {
+            return "Недопустимый способ подсчёта результатов.";
         }
 
         return null;
@@ -323,7 +400,13 @@ public class DisciplinesController : ControllerBase
 
             SidesPerEvent = discipline.SidesPerEvent,
             MinTeamsPerSide = discipline.MinTeamsPerSide,
-            MaxTeamsPerSide = discipline.MaxTeamsPerSide
+            MaxTeamsPerSide = discipline.MaxTeamsPerSide,
+
+            JudgeAggregationMethod = discipline.JudgeAggregationMethod,
+            RankingMethod = discipline.RankingMethod,
+            WinPoints = discipline.WinPoints,
+            DrawPoints = discipline.DrawPoints,
+            LossPoints = discipline.LossPoints,
         };
     }
 

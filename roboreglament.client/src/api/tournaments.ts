@@ -178,15 +178,27 @@ export function removeTournamentOrganizer(
 import type {
   CompetitionFormat,
   ScoringMode,
+  JudgeAggregationMethod,
+  RankingMethod,
 } from '@/types/tournament'
+
 
 export interface DisciplineRulesRequest {
   format: CompetitionFormat
   scoringMode: ScoringMode
+
+  judgeAggregationMethod: JudgeAggregationMethod
+  rankingMethod: RankingMethod
+
   sidesPerEvent: number
   minTeamsPerSide: number
   maxTeamsPerSide: number
+
+  winPoints: number
+  drawPoints: number
+  lossPoints: number
 }
+
 
 export function updateDisciplineRules(
   tournamentId: number,

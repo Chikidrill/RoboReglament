@@ -23,7 +23,7 @@
 @import './components/protocol-templates.css';
 @import './components/competition-matches.css';
 @import './pages/judge.css';
-
+@import './components/competition-results.css';
 .placeholder-page {
   padding-top: 56px;
 }

@@ -27,9 +27,9 @@ public sealed class SaveMatchSideRequest
     public List<int> TeamIds { get; set; } = new();
 }
 
+
 public sealed class DrawMatchesRequest
 {
-    // Точное число команд в каждой стороне.
     [Required]
     [Range(1, 4)]
     public int? TeamsPerSide { get; set; }
@@ -38,6 +38,12 @@ public sealed class DrawMatchesRequest
 
     [MaxLength(100)]
     public string? NamePrefix { get; set; }
+
+    public MatchDrawMode Mode { get; set; }
+        = MatchDrawMode.FixedAppearances;
+
+    [Range(1, 30)]
+    public int AppearancesPerTeam { get; set; } = 1;
 }
 
 public sealed class UpdateMatchStatusRequest
@@ -106,4 +112,10 @@ public sealed class MatchJudgeResponse
     public string? MiddleName { get; set; }
 
     public DateTime AssignedAt { get; set; }
+}
+
+public enum MatchDrawMode
+{
+    FixedAppearances,
+    AllUnique
 }

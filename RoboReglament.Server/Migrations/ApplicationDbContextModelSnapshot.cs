@@ -198,8 +198,23 @@ namespace RoboReglament.Server.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("nvarchar(2000)");
 
+                    b.Property<int>("DrawPoints")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
                     b.Property<int>("Format")
                         .HasColumnType("int");
+
+                    b.Property<int>("JudgeAggregationMethod")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("LossPoints")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<int>("MaxTeamsPerSide")
                         .ValueGeneratedOnAdd()
@@ -216,6 +231,11 @@ namespace RoboReglament.Server.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
+                    b.Property<int>("RankingMethod")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
                     b.Property<int>("ScoringMode")
                         .HasColumnType("int");
 
@@ -227,6 +247,11 @@ namespace RoboReglament.Server.Migrations
                     b.Property<int>("TournamentId")
                         .HasColumnType("int");
 
+                    b.Property<int>("WinPoints")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(3);
+
                     b.HasKey("Id");
 
                     b.HasIndex("TournamentId", "Name")
@@ -235,6 +260,12 @@ namespace RoboReglament.Server.Migrations
                     b.ToTable("Disciplines", t =>
                         {
                             t.HasCheckConstraint("CK_Disciplines_CompetitionRules", "(\r\n            (\r\n                ([Format] = 0 AND [SidesPerEvent] = 1)\r\n                OR\r\n                ([Format] = 1 AND [SidesPerEvent] BETWEEN 2 AND 4)\r\n            )\r\n            AND\r\n            (\r\n                (\r\n                    [ScoringMode] = 0\r\n                    AND [MinTeamsPerSide] = 1\r\n                    AND [MaxTeamsPerSide] = 1\r\n                )\r\n                OR\r\n                (\r\n                    [ScoringMode] = 1\r\n                    AND [MinTeamsPerSide] BETWEEN 2 AND 4\r\n                    AND [MaxTeamsPerSide]\r\n                        BETWEEN [MinTeamsPerSide] AND 4\r\n                )\r\n            )\r\n        )");
+
+                            t.HasCheckConstraint("CK_Disciplines_JudgeAggregationMethod", "[JudgeAggregationMethod] IN (0, 1, 2)");
+
+                            t.HasCheckConstraint("CK_Disciplines_MatchPoints", "[WinPoints] BETWEEN 0 AND 100\r\n          AND [DrawPoints] BETWEEN 0 AND 100\r\n          AND [LossPoints] BETWEEN 0 AND 100\r\n          AND [WinPoints] > [DrawPoints]\r\n          AND [DrawPoints] >= [LossPoints]");
+
+                            t.HasCheckConstraint("CK_Disciplines_RankingMethod", "(\r\n            ([Format] = 0 AND [RankingMethod] IN (0, 1, 2))\r\n            OR\r\n            ([Format] = 1 AND [RankingMethod] = 3)\r\n        )");
                         });
                 });
 

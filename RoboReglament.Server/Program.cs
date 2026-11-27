@@ -76,7 +76,29 @@ using (var scope = app.Services.CreateScope())
     await DbInitializer.InitializeOwnerAsync(
         scope.ServiceProvider,
         builder.Configuration);
+
 }
+
+
+if (app.Environment.IsDevelopment() &&
+    Environment.GetEnvironmentVariable("ROBO_TEST_SEED") == "1")
+{
+    var password = Environment.GetEnvironmentVariable(
+        "ROBO_TEST_SEED_PASSWORD");
+
+    if (string.IsNullOrWhiteSpace(password))
+    {
+        throw new InvalidOperationException(
+            "Укажите ROBO_TEST_SEED_PASSWORD.");
+    }
+
+    using var scope = app.Services.CreateScope();
+
+    await DevelopmentTestSeeder.SeedAsync(
+        scope.ServiceProvider,
+        password);
+}
+
 
 app.UseDefaultFiles();
 app.MapStaticAssets();
