@@ -44,3 +44,21 @@ export async function logout(): Promise<void> {
     method: 'POST',
   })
 }
+
+export interface ChangePasswordRequest {
+  currentPassword: string
+  newPassword: string
+}
+
+export async function changePassword(
+  request: ChangePasswordRequest,
+): Promise<void> {
+  await apiRequest<void>(`${API_URL}/change-password`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(request),
+  })
+}
+

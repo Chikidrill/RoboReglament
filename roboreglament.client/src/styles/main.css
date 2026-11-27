@@ -24,6 +24,7 @@
 @import './components/competition-matches.css';
 @import './pages/judge.css';
 @import './components/competition-results.css';
+@import './pages/participant-overview.css'
 .placeholder-page {
   padding-top: 56px;
 }

@@ -22,7 +22,7 @@ import OrganizerTournamentsView from '@/views/OrganizerTournamentsView.vue'
 import OrganizerTournamentDetailsView from '@/views/OrganizerTournamentsDetailsView.vue'
 import JudgeMatchesView from '@/views/JudgeMatchesView.vue'
 import JudgeScorecardView from '@/views/JudgeScorecardView.vue'
-
+import ParticipantOverviewView from '@/views/ParticipantOverviewView.vue'
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
 
@@ -166,7 +166,14 @@ const router = createRouter({
             roles: ['Judge'],
           },
         },
-
+        {
+          path: 'participant',
+          name: 'participant-overview',
+          component: ParticipantOverviewView,
+          meta: {
+            roles: ['Participant'],
+          },
+        },
       ],
     },
 
@@ -184,6 +191,7 @@ const router = createRouter({
           component: AdminView,
         },
       ],
+
     },
 
   ],
