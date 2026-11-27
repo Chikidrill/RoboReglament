@@ -44,3 +44,5 @@ export async function logout(): Promise<void> {
     method: 'POST',
   })
 }
+
+

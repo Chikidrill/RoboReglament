@@ -165,6 +165,17 @@ const currentWorkspace = computed<WorkspaceInfo>(() => {
           <span>Перейти к судейству →</span>
         </RouterLink>
 
+        <RouterLink v-if="dashboardStore.activeRole === 'Participant'"
+                    :to="{ name: 'participant-overview' }"
+                    class="dashboard-overview__card">
+          <h3>Моё участие</h3>
+          <p>
+            Команды, соревнования и выступления,
+            в которых вы участвуете.
+          </p>
+          <span>Открыть раздел →</span>
+        </RouterLink>
+
       </div>
     </div>
   </section>
