@@ -92,8 +92,6 @@ public static class MatchDrawGenerator
             return missing;
         }
 
-        // В фиксированном режиме один раунд
-        // включает каждую команду ровно один раз.
         if (teams.Length % slots != 0)
         {
             throw new InvalidOperationException(
@@ -144,6 +142,7 @@ public static class MatchDrawGenerator
         {
             int[][][]? best = null;
             var bestCost = int.MaxValue;
+            int bestCandidateCount = 0;
 
             var attempts = standardRounds is null ? 128 : 1;
 
@@ -166,6 +165,14 @@ public static class MatchDrawGenerator
                     {
                         best = candidate;
                         bestCost = cost;
+                        bestCandidateCount = 1;
+                    }
+                    else if (cost == bestCost){
+                        bestCandidateCount++;
+                        if (RandomNumberGenerator.GetInt32(bestCandidateCount) == 0)
+                        {
+                            best = candidate;
+                        }
                     }
                 }
             }

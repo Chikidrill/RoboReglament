@@ -119,3 +119,39 @@ public enum MatchDrawMode
     FixedAppearances,
     AllUnique
 }
+
+
+public sealed class DrawPreviewMatchResponse
+{
+    public int Number { get; set; }
+
+    public string Name { get; set; } = string.Empty;
+
+    public List<SaveMatchSideRequest> Sides { get; set; }
+        = new();
+}
+
+public sealed class DrawPreviewResponse
+{
+    public string Snapshot { get; set; } = string.Empty;
+
+    public int ProtocolTemplateId { get; set; }
+
+    public List<DrawPreviewMatchResponse> Matches { get; set; }
+        = new();
+}
+
+
+public sealed class ConfirmDrawRequest
+{
+    [Required]
+    public string Snapshot { get; set; } = string.Empty;
+
+    [Required]
+    public DrawMatchesRequest Parameters { get; set; } = new();
+
+    [Required]
+    public List<DrawPreviewMatchResponse> Matches { get; set; }
+        = new();
+}
+

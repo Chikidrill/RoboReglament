@@ -175,7 +175,6 @@ const currentWorkspace = computed<WorkspaceInfo>(() => {
           </p>
           <span>Открыть раздел →</span>
         </RouterLink>
-
       </div>
     </div>
   </section>
